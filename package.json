@@ -1,0 +1,40 @@
+{
+    "name": "Spectre Scan",
+    "type": "module",
+    "version": "1.0.0",
+    "main": "dist/spectre-scan.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "node dist/spectre-scan.js",
+        "start": "node dist/spectre-scan.js",
+        "lint": "eslint src/**/*.ts",
+        "lint:fix": "eslint --fix src/**/*.ts",
+        "clean:dist": "rm -rf dist/*",
+        "clean:data": "rm -rf data/*",
+        "clean": "npm run clean:dist && npm run clean:data",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": ["Nostr"],
+    "author": "tf",
+    "license": "MIT",
+    "description": "Aggregator of daily unique pubkeys on the Nostr network",
+    "dependencies": {
+        "nostr-tools": "^2.10.4",
+        "rxjs": "^7.8.2",
+        "sqlite3": "^5.1.7",
+        "ws": "^8.18.1"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.23.0",
+        "@stylistic/eslint-plugin-ts": "^4.2.0",
+        "@types/node": "^22.13.14",
+        "@types/ws": "^8.5.14",
+        "eslint": "^9.23.0",
+        "globals": "^16.0.0",
+        "typescript": "^5.8.2",
+        "typescript-eslint": "^8.27.0"
+    },
+    "optionalDependencies": {
+        "bufferutil": "^4.0.9"
+    }
+}

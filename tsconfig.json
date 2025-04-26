@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "target": "ES2023",                 // specify the JavaScript language version to compile to (ES2023).
+        "useDefineForClassFields": true,    // use native JavaScript class field semantics for property initialization.
+        "module": "NodeNext",               // emit Node.js-compatible ECMAScript modules, supporting both .js and .ts extensions.
+        "lib": ["ES2023"],                  // include the ES2023 standard library for type checking.
+        "skipLibCheck": true,               // skip type checking of declaration files (*.d.ts) for faster builds.
+        "moduleResolution": "NodeNext",     // use Node.js-style module resolution, matching how Node.js finds modules.
+        "resolveJsonModule": true,          // allow importing .json files as modules.
+        "isolatedModules": true,            // ensure each file can be safely transpiled independently (required for some build tools).
+        "strict": true,                     // enable all strict type-checking options for safer code.
+        "noUnusedLocals": true,             // report errors on unused local variables.
+        "noUnusedParameters": true,         // report errors on unused function parameters.
+        "noFallthroughCasesInSwitch": true, // prevent fallthrough between switch cases unless explicitly handled.
+        "outDir": "dist",                   // output compiled JavaScript files to the 'dist' directory.
+        "esModuleInterop": true,            // enable default imports from modules with CommonJS exports.
+        "sourceMap": true,                  // generate source map files for easier debugging.
+        "rootDir": "src",                   // specify the root directory of input TypeScript files.
+        "types": ["node"]                   // include type definitions for Node.js.
+    },
+    "include": ["src"]                      // include all files in the 'src' directory for compilation.
+}
