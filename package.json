@@ -4,9 +4,9 @@
     "version": "1.0.0",
     "main": "dist/spectre-scan.js",
     "scripts": {
-        "build": "tsc",
-        "dev": "node dist/spectre-scan.js",
-        "start": "node dist/spectre-scan.js",
+        "build": "mkdir -p dist && tsc",
+        "dev": "mkdir -p data && node dist/spectre-scan.js",
+        "start": "mkdir -p data && node dist/spectre-scan.js",
         "lint": "eslint src/**/*.ts",
         "lint:fix": "eslint --fix src/**/*.ts",
         "clean:dist": "rm -rf dist/*",
