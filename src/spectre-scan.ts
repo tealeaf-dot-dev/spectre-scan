@@ -19,4 +19,5 @@ const config: IScannerConfig = {
 }
 
 const spectreScan = new Scanner(new NostrToolsRelayScanner(), new SQLiteStorage());
-spectreScan.run(config);
+
+await spectreScan.run(config);

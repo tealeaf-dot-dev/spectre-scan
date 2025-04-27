@@ -29,7 +29,7 @@ export class Scanner implements IScannerInputPort {
         this.#storage = storage;
     }
 
-    async run(config: IScannerConfig) {
+    async run(config: IScannerConfig): Promise<void> {
         const { relayURLs, filters } = config;
 
         try {
@@ -38,8 +38,8 @@ export class Scanner implements IScannerInputPort {
             this.#relayScanner
                 .scan(relayURLs, filters)
                 .subscribe({
-                    next: (pubkey) => this.#maybeStorePubkey(pubkey),
-                    error: Scanner.#logSubscriptionError,
+                    next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
+                    error: (e: unknown) => { Scanner.#logSubscriptionError(e) },
                 });
         } catch (error: unknown) {
             console.error(`Failed to initialize: ${

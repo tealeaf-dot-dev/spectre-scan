@@ -42,7 +42,7 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
                 },
             });
 
-            return () => subscription.close();
+            return () => { subscription.close() };
         });
     }
 
@@ -52,7 +52,7 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
             mergeMap(relayURL => NostrToolsRelayScanner.#connectToRelay(relayURL).pipe(
                 retry({ delay: 60000 }),
                 mergeMap(relay => NostrToolsRelayScanner.#subscribeToRelay(relay, filters)),
-                finalize(() => console.log(`Disconnected from ${relayURL}`)),
+                finalize(() => { console.log(`Disconnected from ${relayURL}`) }),
                 repeat({ delay: 60000 }),
             )),
             map(event => event.pubkey),

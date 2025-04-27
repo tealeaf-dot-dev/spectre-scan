@@ -7,7 +7,7 @@ import { SQLiteConfig } from './types.js';
 export class SQLiteStorage implements IPubkeyStoragePort {
     #database: sqlite3.Database | null = null;
     #initialized: boolean = false;
-    #run: ((sql: string, ...params: any[]) => Promise<unknown>) | null = null;
+    #run: ((sql: string, ...params: unknown[]) => Promise<unknown>) | null = null;
 
     static readonly #config: SQLiteConfig = {
         databasePath: './data/nostr_data.db',
@@ -27,7 +27,7 @@ export class SQLiteStorage implements IPubkeyStoragePort {
 
         return new Promise((resolve, reject) => {
             this.#database = new sqlite3.Database(path, function(err) {
-                if (err) return reject(err);
+                if (err) reject(err);
 
                 resolve();
             });
@@ -37,7 +37,10 @@ export class SQLiteStorage implements IPubkeyStoragePort {
     async init(): Promise<void> {
         try {
             await this.#createDatabase(SQLiteStorage.#config.databasePath);
-            this.#run = promisify(this.#database!.run.bind(this.#database));
+
+            if (!this.#database) throw new Error('Database not initialized');
+
+            this.#run = promisify(this.#database.run.bind(this.#database));
             await this.#run(SQLiteStorage.#config.SQL.createPubkeyTable);
             this.#initialized = true;
         } catch (error: unknown) {
@@ -49,13 +52,14 @@ export class SQLiteStorage implements IPubkeyStoragePort {
         }
     }
 
-    storePubkey(pubkey: Pubkey, date: Date): void {
+    async storePubkey(pubkey: Pubkey, date: Date): Promise<void> {
         if (!this.#database) throw new Error('Database not initialized');
+        if (!this.#run) throw new Error('Blah');
 
         const dateStr = date.toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
 
         try {
-            this.#run!(SQLiteStorage.#config.SQL.storePubkey, [pubkey, dateStr]);
+            await this.#run(SQLiteStorage.#config.SQL.storePubkey, [pubkey, dateStr]);
         } catch (error: unknown) {
             if (error instanceof Error) {
                 throw error;
