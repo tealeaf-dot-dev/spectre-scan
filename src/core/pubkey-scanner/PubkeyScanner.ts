@@ -8,6 +8,7 @@ import { stringifyError } from "../../shared/functions/stringifyError.js";
 export class PubkeyScanner implements IPubkeyScannerInputPort {
     #relayScanner: IRelayScannerPort;
     #storage: IPubkeyStoragePort;
+    #initialized: boolean = false;
 
     #maybeStorePubkey(pubkey: Pubkey): void {
         this.#storage.storePubkey(pubkey, new Date()).catch((error: unknown) => {
@@ -24,20 +25,27 @@ export class PubkeyScanner implements IPubkeyScannerInputPort {
         this.#storage = storage;
     }
 
-    async run(config: IPubkeyScannerConfig): Promise<void> {
-        const { relayURLs, filters } = config;
-
+    async init(): Promise<void> {
         try {
             await this.#storage.init();
+            this.#initialized = true;
+        } catch (error: unknown) {
+            console.error(`Failed to initialize: ${stringifyError(error)}`);
+        }
+    }
 
+    run(config: IPubkeyScannerConfig): void {
+        const { relayURLs, filters } = config;
+
+        if (this.#initialized) {
             this.#relayScanner
                 .scan(relayURLs, filters)
                 .subscribe({
                     next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
                     error: (e: unknown) => { PubkeyScanner.#logSubscriptionError(e) },
                 });
-        } catch (error: unknown) {
-            console.error(`Failed to initialize: ${stringifyError(error)}`);
+        } else {
+            console.error('PubkeyScanner is not initiialized');
         }
     }
 }

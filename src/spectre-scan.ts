@@ -5,4 +5,5 @@ import { scannerConfig, sqliteConfig } from './config.js';
 
 const spectreScan = new PubkeyScanner(new NostrToolsRelayScanner(), new SQLiteStorage(sqliteConfig.databasePath));
 
-await spectreScan.run(scannerConfig);
+await spectreScan.init();
+spectreScan.run(scannerConfig);
