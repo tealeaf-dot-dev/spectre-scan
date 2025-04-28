@@ -5,6 +5,7 @@ import { defer, finalize, from, map, mergeMap, Observable, repeat, retry, Subscr
 import { IRelayScannerPort } from "../../core/pubkey-scanner/ports/nostr/IRelayScannerPort.js";
 import { IEvent } from "../../shared/interfaces/IEvent.js";
 import { FiltersList, Pubkey, RelayURL, RelayURLList } from "../../shared/types.js";
+import { stringifyError } from "../../shared/functions/stringifyError.js";
 
 useWebSocketImplementation(WebSocket);
 
@@ -19,7 +20,7 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
 
                 return relay;
             }).catch((error: unknown) => {
-                console.log(`Failed to connect to ${relayURL}: ${error instanceof Error ? error.message : String(error)}`);
+                console.log(`Failed to connect to ${relayURL}: ${stringifyError(error)}`);
 
                 if (error instanceof Error) {
                     throw error;

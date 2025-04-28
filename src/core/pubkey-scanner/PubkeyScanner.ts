@@ -3,6 +3,7 @@ import { IPubkeyStoragePort } from "./ports/storage/IPubkeyStoragePort.js";
 import { Pubkey } from "../../shared/types.js";
 import { IPubkeyScannerInputPort } from "./ports/input/IPubkeyScannerInputPort.js";
 import { IPubkeyScannerConfig } from "./ports/input/IPubkeyScannerConfig.js";
+import { stringifyError } from "../../shared/functions/stringifyError.js";
 
 export class PubkeyScanner implements IPubkeyScannerInputPort {
     #relayScanner: IRelayScannerPort;
@@ -10,16 +11,12 @@ export class PubkeyScanner implements IPubkeyScannerInputPort {
 
     #maybeStorePubkey(pubkey: Pubkey): void {
         this.#storage.storePubkey(pubkey, new Date()).catch((error: unknown) => {
-            console.error(`Error storing pubkey ${pubkey}: ${
-                error instanceof Error ? error.message : String(error)
-            }`);
+            console.error(`Error storing pubkey ${pubkey}: ${stringifyError(error)}`);
         });
     }
 
     static #logSubscriptionError(error: unknown): void {
-        console.error(`Subscription error: ${
-            error instanceof Error ? error.message : String(error)
-        }`);
+        console.error(`Subscription error: ${stringifyError(error)}`);
     }
 
     constructor(relayScanner: IRelayScannerPort, storage: IPubkeyStoragePort) {
@@ -40,9 +37,7 @@ export class PubkeyScanner implements IPubkeyScannerInputPort {
                     error: (e: unknown) => { PubkeyScanner.#logSubscriptionError(e) },
                 });
         } catch (error: unknown) {
-            console.error(`Failed to initialize: ${
-                error instanceof Error ? error.message : String(error)
-            }`);
+            console.error(`Failed to initialize: ${stringifyError(error)}`);
         }
     }
 }
