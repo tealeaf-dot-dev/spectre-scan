@@ -2,29 +2,19 @@ import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import { IPubkeyStoragePort } from "../../core/pubkey-scanner/ports/storage/IPubkeyStoragePort.js";
 import { Pubkey } from '../../shared/types.js';
-import { SQLiteConfig } from './types.js';
+import { ISQL } from './interfaces/ISQL.js';
+import { sql } from './sql.js';
 
 export class SQLiteStorage implements IPubkeyStoragePort {
     #databasePath: string;
     #database: sqlite3.Database | null = null;
     #initialized: boolean = false;
     #run: ((sql: string, ...params: unknown[]) => Promise<unknown>) | null = null;
+    #sql: ISQL;
 
     constructor(databasePath: string) {
         this.#databasePath = databasePath;
-    }
-
-    static readonly #config: SQLiteConfig = {
-        SQL: {
-            createPubkeyTable: `CREATE TABLE IF NOT EXISTS pubkeys (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                pubkey TEXT,
-                date DATE,
-                first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(pubkey, date))
-                `,
-            storePubkey: 'INSERT OR IGNORE INTO pubkeys (pubkey, date) VALUES (?, ?)',
-        },
+        this.#sql = sql;
     }
 
     async #createDatabase(path: string): Promise<void> {
@@ -47,7 +37,7 @@ export class SQLiteStorage implements IPubkeyStoragePort {
             if (!this.#database) throw new Error('Database not initialized');
 
             this.#run = promisify(this.#database.run.bind(this.#database));
-            await this.#run(SQLiteStorage.#config.SQL.createPubkeyTable);
+            await this.#run(this.#sql.createPubkeyTable);
             this.#initialized = true;
         } catch (error: unknown) {
             if (error instanceof Error) {
@@ -65,7 +55,7 @@ export class SQLiteStorage implements IPubkeyStoragePort {
         const dateStr = date.toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
 
         try {
-            await this.#run(SQLiteStorage.#config.SQL.storePubkey, [pubkey, dateStr]);
+            await this.#run(this.#sql.storePubkey, [pubkey, dateStr]);
         } catch (error: unknown) {
             if (error instanceof Error) {
                 throw error;
