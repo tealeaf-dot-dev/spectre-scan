@@ -15,6 +15,21 @@ export class PubkeyScanner implements IPubkeyScannerInputPort {
         this.#storage = storage;
     }
 
+    get storage(): IPubkeyStoragePort {
+
+        return this.#storage;
+    }
+
+    get relayScanner(): IRelayScannerPort {
+
+        return this.#relayScanner;
+    }
+
+    get initialized(): boolean {
+
+        return this.#initialized;
+    }
+
     #maybeStorePubkey(pubkey: Pubkey): void {
         this.#storage.storePubkey(pubkey, new Date())
             .catch((error: unknown) => {
