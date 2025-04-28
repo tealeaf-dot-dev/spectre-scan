@@ -1,3 +1,3 @@
 export interface ISQL {
-    [key: string]: string,
+    readonly [key: string]: string,
 }
