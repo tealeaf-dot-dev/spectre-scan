@@ -10,6 +10,11 @@ export class PubkeyScanner implements IPubkeyScannerInputPort {
     #storage: IPubkeyStoragePort;
     #initialized: boolean = false;
 
+    constructor(relayScanner: IRelayScannerPort, storage: IPubkeyStoragePort) {
+        this.#relayScanner = relayScanner;
+        this.#storage = storage;
+    }
+
     #maybeStorePubkey(pubkey: Pubkey): void {
         this.#storage.storePubkey(pubkey, new Date())
             .catch((error: unknown) => {
@@ -19,11 +24,6 @@ export class PubkeyScanner implements IPubkeyScannerInputPort {
 
     static #logSubscriptionError(error: unknown): void {
         console.error(`Subscription error: ${stringifyError(error)}`);
-    }
-
-    constructor(relayScanner: IRelayScannerPort, storage: IPubkeyStoragePort) {
-        this.#relayScanner = relayScanner;
-        this.#storage = storage;
     }
 
     async init(): Promise<void> {
