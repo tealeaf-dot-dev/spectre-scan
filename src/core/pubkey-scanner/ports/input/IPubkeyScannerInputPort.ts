@@ -1,4 +1,4 @@
-import { IPubkeyScannerConfig } from "./IPubkeyScannerConfig.js";
+import { IPubkeyScannerConfig } from "./dto/IPubkeyScannerConfig.js";
 
 export interface IPubkeyScannerInputPort {
     run(config: IPubkeyScannerConfig): Promise<void>,
