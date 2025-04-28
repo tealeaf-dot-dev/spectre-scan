@@ -17,6 +17,16 @@ export class SQLiteStorage implements IPubkeyStoragePort {
         this.#sql = sql;
     }
 
+    get databasePath(): string {
+
+        return this.#databasePath;
+    }
+
+    get initialized(): boolean {
+
+        return this.#initialized;
+    }
+
     async #createDatabase(path: string): Promise<void> {
 
         return new Promise((resolve, reject) => {
@@ -63,10 +73,5 @@ export class SQLiteStorage implements IPubkeyStoragePort {
                 throw new Error(`Failed to add pubkey: ${String(error)}`);
             }
         }
-    }
-
-    initialized(): boolean {
-
-        return this.#initialized;
     }
 }
