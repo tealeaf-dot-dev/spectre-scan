@@ -5,12 +5,16 @@ import { Pubkey } from '../../shared/types.js';
 import { SQLiteConfig } from './types.js';
 
 export class SQLiteStorage implements IPubkeyStoragePort {
+    #databasePath: string;
     #database: sqlite3.Database | null = null;
     #initialized: boolean = false;
     #run: ((sql: string, ...params: unknown[]) => Promise<unknown>) | null = null;
 
+    constructor(databasePath: string) {
+        this.#databasePath = databasePath;
+    }
+
     static readonly #config: SQLiteConfig = {
-        databasePath: './data/nostr_data.db',
         SQL: {
             createPubkeyTable: `CREATE TABLE IF NOT EXISTS pubkeys (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,8 +39,10 @@ export class SQLiteStorage implements IPubkeyStoragePort {
     }
 
     async init(): Promise<void> {
+        if (!this.#databasePath) throw new Error('Missing database path');
+
         try {
-            await this.#createDatabase(SQLiteStorage.#config.databasePath);
+            await this.#createDatabase(this.#databasePath);
 
             if (!this.#database) throw new Error('Database not initialized');
 

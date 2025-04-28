@@ -1,5 +1,9 @@
 import { IPubkeyScannerConfig } from "./core/pubkey-scanner/ports/input/IPubkeyScannerConfig.js";
 
+interface ISQLiteConfig {
+    databasePath: string;
+}
+
 export const scannerConfig: IPubkeyScannerConfig = {
     relayURLs: [
         'wss://relay.damus.io',
@@ -13,4 +17,8 @@ export const scannerConfig: IPubkeyScannerConfig = {
     filters: [
         { kinds: [1] },
     ]
+}
+
+export const sqliteConfig: ISQLiteConfig = {
+    databasePath: './data/nostr_data.db',
 }
