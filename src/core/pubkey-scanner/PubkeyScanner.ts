@@ -1,10 +1,10 @@
-import { IScannerInputPort } from "./ports/input/IScannerInputPort.js";
 import { IRelayScannerPort } from "./ports/nostr/IRelayScannerPort.js";
 import { IPubkeyStoragePort } from "./ports/storage/IPubkeyStoragePort.js";
-import { IScannerConfig } from "./ports/input/IScannerConfig.js";
 import { Pubkey } from "../../shared/types.js";
+import { IPubkeyScannerInputPort } from "./ports/input/IPubkeyScannerInputPort.js";
+import { IPubkeyScannerConfig } from "./ports/input/IPubkeyScannerConfig.js";
 
-export class Scanner implements IScannerInputPort {
+export class PubkeyScanner implements IPubkeyScannerInputPort {
     #relayScanner: IRelayScannerPort;
     #storage: IPubkeyStoragePort;
 
@@ -29,7 +29,7 @@ export class Scanner implements IScannerInputPort {
         this.#storage = storage;
     }
 
-    async run(config: IScannerConfig): Promise<void> {
+    async run(config: IPubkeyScannerConfig): Promise<void> {
         const { relayURLs, filters } = config;
 
         try {
@@ -39,7 +39,7 @@ export class Scanner implements IScannerInputPort {
                 .scan(relayURLs, filters)
                 .subscribe({
                     next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
-                    error: (e: unknown) => { Scanner.#logSubscriptionError(e) },
+                    error: (e: unknown) => { PubkeyScanner.#logSubscriptionError(e) },
                 });
         } catch (error: unknown) {
             console.error(`Failed to initialize: ${

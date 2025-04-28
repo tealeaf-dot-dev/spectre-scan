@@ -1,6 +1,6 @@
-import { IScannerConfig } from "./core/scanner/ports/input/IScannerConfig.js";
+import { IPubkeyScannerConfig } from "./core/pubkey-scanner/ports/input/IPubkeyScannerConfig.js";
 
-export const scannerConfig: IScannerConfig = {
+export const scannerConfig: IPubkeyScannerConfig = {
     relayURLs: [
         'wss://relay.damus.io',
         'wss://nostr-pub.wellorder.net',
