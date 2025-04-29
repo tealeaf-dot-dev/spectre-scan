@@ -12,9 +12,11 @@
         "clean:dist": "rm -rf dist/*",
         "clean:data": "rm -rf data/*",
         "clean": "npm run clean:dist && npm run clean:data",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "vitest"
     },
-    "keywords": ["Nostr"],
+    "keywords": [
+        "Nostr"
+    ],
     "author": "tf",
     "license": "MIT",
     "description": "Aggregator of daily unique pubkeys on the Nostr network",
@@ -32,7 +34,9 @@
         "eslint": "^9.23.0",
         "globals": "^16.0.0",
         "typescript": "^5.8.2",
-        "typescript-eslint": "^8.27.0"
+        "typescript-eslint": "^8.27.0",
+        "vitest": "^3.1.2",
+        "vitest-mock-extended": "^3.1.0"
     },
     "optionalDependencies": {
         "bufferutil": "^4.0.9"
