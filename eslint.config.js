@@ -25,6 +25,7 @@ export default [
         },
         rules: {
             '@stylistic/ts/indent': ['error', 4],
+            '@stylistic/ts/semi': ['error', 'always'],
         },
     },
 ];
