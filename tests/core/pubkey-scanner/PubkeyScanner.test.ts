@@ -50,32 +50,23 @@ describe('PubkeyScanner', () => {
     });
 
     describe('run()', () => {
-        describe('When initialized', () => {
+        describe('When initialized', async () => {
+            const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
+            const pubkey$: Observable<Pubkey> = from(testPubkeys);
+
+            relayScanner.scan.mockReturnValue(pubkey$);
+            storage.storePubkey.mockResolvedValue();
+
+            await pubkeyScanner.init();
+            pubkeyScanner.run(scannerConfig);
+            await new Promise(resolve => setTimeout(resolve, 0)); // Wait for the current event loop cycle to finish, allowing the observable stream to complete
+
             it('Scans relays for pubkeys', async () => {
-                const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
-                const pubkey$: Observable<Pubkey> = from(testPubkeys);
-
-                relayScanner.scan.mockReturnValue(pubkey$);
-                storage.storePubkey.mockResolvedValue();
-
-                await pubkeyScanner.init();
-                pubkeyScanner.run(scannerConfig);
-
                 expect(relayScanner.scan).toHaveBeenCalledOnce();
                 expect(relayScanner.scan).toHaveBeenCalledWith(scannerConfig.relayURLs, scannerConfig.filters);
             });
 
             it('Stores pubkeys', async () => {
-                const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
-                const pubkey$: Observable<Pubkey> = from(testPubkeys);
-
-                relayScanner.scan.mockReturnValue(pubkey$);
-                storage.storePubkey.mockResolvedValue();
-
-                await pubkeyScanner.init();
-                pubkeyScanner.run(scannerConfig);
-                await new Promise(resolve => setTimeout(resolve, 0)); // Wait for the current event loop cycle to finish, allowing the observable stream to complete
-
                 expect(storage.storePubkey).toHaveBeenCalledTimes(testPubkeys.length);
                 expect(storage.storePubkey).toHaveBeenCalledWith('pubkey1', expect.any(Date));
                 expect(storage.storePubkey).toHaveBeenCalledWith('pubkey2', expect.any(Date));
