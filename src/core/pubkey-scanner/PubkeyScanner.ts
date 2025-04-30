@@ -61,7 +61,7 @@ export class PubkeyScanner implements IPubkeyScannerInputPort {
                     error: (e: unknown) => { PubkeyScanner.#logSubscriptionError(e) },
                 });
         } else {
-            console.error('PubkeyScanner is not initiialized');
+            console.error('PubkeyScanner is not initialized');
         }
     }
 }
