@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { mock } from "vitest-mock-extended";
 import { from, Observable } from 'rxjs';
 import { PubkeyScanner } from "../../../src/core/pubkey-scanner/PubkeyScanner.js";
@@ -39,6 +39,7 @@ describe('PubkeyScanner', () => {
 
         it('Remains uninitialized if storage initialization fails', async () => {
             const { pubkeyScanner, storage } = createPubkeyScanner();
+            const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             storage.init.mockRejectedValue(new Error('Storage failed to initialize'));
 
@@ -46,6 +47,7 @@ describe('PubkeyScanner', () => {
 
             expect(storage.init).toHaveBeenCalledOnce();
             expect(pubkeyScanner.initialized).toEqual(false);
+            expect(errorLog).toHaveBeenCalled();
         });
     });
 
