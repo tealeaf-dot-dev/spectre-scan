@@ -8,7 +8,7 @@ import { sql } from './sql.js';
 export class SQLiteStorage implements IPubkeyStoragePort {
     #databasePath: string;
     #database: sqlite3.Database | null = null;
-    #initialized: boolean = false;
+    #createdTables: boolean = false;
     #run: ((sql: string, ...params: unknown[]) => Promise<unknown>) | null = null;
     #sql: ISQL;
 
@@ -24,7 +24,7 @@ export class SQLiteStorage implements IPubkeyStoragePort {
 
     get initialized(): boolean {
 
-        return this.#initialized;
+        return !!this.#database && this.#createdTables;
     }
 
     async #createDatabase(path: string): Promise<void> {
@@ -48,7 +48,7 @@ export class SQLiteStorage implements IPubkeyStoragePort {
 
             this.#run = promisify(this.#database.run.bind(this.#database));
             await this.#run(this.#sql.createPubkeyTable);
-            this.#initialized = true;
+            this.#createdTables = true;
         } catch (error: unknown) {
             if (error instanceof Error) {
                 throw error;
