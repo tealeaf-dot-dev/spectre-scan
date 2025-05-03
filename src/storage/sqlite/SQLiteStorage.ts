@@ -24,7 +24,7 @@ export class SQLiteStorage implements IPubkeyStoragePort {
 
     get initialized(): boolean {
 
-        return !!this.#database && this.#createdTables;
+        return !!this.#database && !!this.#run && this.#createdTables;
     }
 
     async #createDatabase(path: string): Promise<void> {
@@ -59,7 +59,7 @@ export class SQLiteStorage implements IPubkeyStoragePort {
     }
 
     async storePubkey(pubkey: Pubkey, date: Date): Promise<void> {
-        if (!this.#database) throw new Error('Database not initialized');
+        if (!this.initialized) throw new Error('Database not initialized');
         if (!this.#run) throw new Error('Run method does not exist');
 
         const dateStr = date.toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
