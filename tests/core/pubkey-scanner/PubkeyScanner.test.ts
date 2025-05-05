@@ -1,94 +1,119 @@
-import { describe, it, expect, vi } from "vitest";
-import { mock } from "vitest-mock-extended";
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { from, Observable } from 'rxjs';
-import { PubkeyScanner } from "../../../src/core/pubkey-scanner/PubkeyScanner.js";
-import { IRelayScannerPort } from "../../../src/core/pubkey-scanner/ports/nostr/IRelayScannerPort.js";
-import { IPubkeyStoragePort } from "../../../src/core/pubkey-scanner/ports/storage/IPubkeyStoragePort.js";
+import { PubkeyScanner } from '../../../src/core/pubkey-scanner/PubkeyScanner.js';
+import { IRelayScannerPort } from '../../../src/core/pubkey-scanner/ports/nostr/IRelayScannerPort.js';
+import { IPubkeyStoragePort } from '../../../src/core/pubkey-scanner/ports/storage/IPubkeyStoragePort.js';
 import { scannerConfig } from '../../../src/config.js';
-import { Pubkey } from "../../../src/shared/types.js";
+import { Pubkey } from '../../../src/shared/types.js';
+
+const TEST_PUBKEYS: Pubkey[] = ['pubkey1', 'pubkey2', 'pubkey3'];
+
+function createPubkeyScanner() {
+    const relayScanner = mock<IRelayScannerPort>();
+    const storage = mock<IPubkeyStoragePort>();
+    const pubkeyScanner = new PubkeyScanner(relayScanner, storage);
+
+    return { pubkeyScanner, relayScanner, storage };
+}
 
 describe('PubkeyScanner', () => {
-    function createPubkeyScanner() {
-        const relayScanner = mock<IRelayScannerPort>();
-        const storage = mock<IPubkeyStoragePort>();
-        const pubkeyScanner = new PubkeyScanner(relayScanner, storage);
+    afterEach(() => vi.clearAllMocks());
 
-        return { pubkeyScanner, storage, relayScanner };
-    }
-
-    const testPubkeys: Pubkey[] = ['pubkey1', 'pubkey2', 'pubkey3'];
-
-    describe('Constructor', () => {
-        it('Initializes properties', () => {
+    describe('constructor(relayScanner, storage)', () => {
+        it('initializes dependencies', () => {
             const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
 
-            expect(pubkeyScanner.relayScanner).toEqual(relayScanner);
-            expect(pubkeyScanner.storage).toEqual(storage);
+            expect(pubkeyScanner.relayScanner).toBe(relayScanner);
+            expect(pubkeyScanner.storage).toBe(storage);
         });
     });
 
     describe('init()', () => {
-        it('Initializes storage', async () => {
+        it('initializes storage', async () => {
             const { pubkeyScanner, storage } = createPubkeyScanner();
 
             await pubkeyScanner.init();
 
             expect(storage.init).toHaveBeenCalledOnce();
-            expect(pubkeyScanner.initialized).toEqual(true);
+            expect(pubkeyScanner.initialized).toBe(true);
         });
 
-        it('Remains uninitialized if storage initialization fails', async () => {
-            const { pubkeyScanner, storage } = createPubkeyScanner();
-            const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+        describe('when storage initialization fails', () => {
+            let pubkeyScanner: PubkeyScanner;
+            let storage: ReturnType<typeof mock<IPubkeyStoragePort>>;
+            let errorSpy: ReturnType<typeof vi.spyOn>;
 
-            storage.init.mockRejectedValue(new Error('Storage failed to initialize'));
+            beforeEach(async () => {
+                ({ pubkeyScanner, storage } = createPubkeyScanner());
 
-            await pubkeyScanner.init();
+                errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+                storage.init.mockRejectedValue(new Error('init fail'));
 
-            expect(storage.init).toHaveBeenCalledOnce();
-            expect(pubkeyScanner.initialized).toEqual(false);
-            expect(errorLog).toHaveBeenCalled();
+                await pubkeyScanner.init();
+            });
+
+            afterEach(() => {
+                errorSpy.mockRestore();
+            });
+
+            it('sets initialized to false', () => {
+                expect(storage.init).toHaveBeenCalledOnce();
+                expect(pubkeyScanner.initialized).toBe(false);
+            });
+
+            it('logs an error to the console', () => {
+                expect(errorSpy).toHaveBeenCalledOnce();
+            });
         });
     });
 
     describe('run()', () => {
-        describe('When initialized', async () => {
-            const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
-            const pubkey$: Observable<Pubkey> = from(testPubkeys);
+        describe('when initialized', () => {
+            let relayScanner: ReturnType<typeof mock<IRelayScannerPort>>;
+            let storage: ReturnType<typeof mock<IPubkeyStoragePort>>;
+            let pubkeyScanner: PubkeyScanner;
 
-            relayScanner.scan.mockReturnValue(pubkey$);
-            storage.storePubkey.mockResolvedValue();
+            beforeEach(async () => {
+                ({ pubkeyScanner, relayScanner, storage } = createPubkeyScanner());
 
-            await pubkeyScanner.init();
-            pubkeyScanner.run(scannerConfig);
-            await new Promise(resolve => setTimeout(resolve, 0)); // Wait for the current event loop cycle to finish, allowing the observable stream to complete
+                const pubkey$: Observable<Pubkey> = from(TEST_PUBKEYS);
+                relayScanner.scan.mockReturnValue(pubkey$);
+                storage.storePubkey.mockResolvedValue();
 
-            it('Scans relays for pubkeys', async () => {
-                expect(relayScanner.scan).toHaveBeenCalledOnce();
-                expect(relayScanner.scan).toHaveBeenCalledWith(scannerConfig.relayURLs, scannerConfig.filters);
+                await pubkeyScanner.init();
+                pubkeyScanner.run(scannerConfig);
+                await new Promise(r => setTimeout(r, 0));
             });
 
-            it('Stores pubkeys', async () => {
-                expect(storage.storePubkey).toHaveBeenCalledTimes(testPubkeys.length);
-                expect(storage.storePubkey).toHaveBeenCalledWith('pubkey1', expect.any(Date));
-                expect(storage.storePubkey).toHaveBeenCalledWith('pubkey2', expect.any(Date));
-                expect(storage.storePubkey).toHaveBeenCalledWith('pubkey3', expect.any(Date));
+            it('scans relays for pubkeys', () => {
+                expect(relayScanner.scan).toHaveBeenCalledOnce();
+                expect(relayScanner.scan).toHaveBeenCalledWith(
+                    scannerConfig.relayURLs,
+                    scannerConfig.filters,
+                );
+            });
+
+            it('stores discovered pubkeys', () => {
+                expect(storage.storePubkey).toHaveBeenCalledTimes(TEST_PUBKEYS.length);
+                for (const pk of TEST_PUBKEYS) {
+                    expect(storage.storePubkey).toHaveBeenCalledWith(pk, expect.any(Date));
+                }
             });
         });
 
-        describe('When uninitialized', () => {
-            it('Does nothing', async () => {
+        describe('when uninitialized', () => {
+            it('logs an error to the console', () => {
                 const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
-                const pubkey$: Observable<Pubkey> = from(testPubkeys);
-
-                relayScanner.scan.mockReturnValue(pubkey$);
-                storage.storePubkey.mockResolvedValue();
+                const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
                 pubkeyScanner.run(scannerConfig);
 
                 expect(relayScanner.scan).not.toHaveBeenCalled();
                 expect(storage.storePubkey).not.toHaveBeenCalled();
+                expect(errorSpy).toHaveBeenCalledOnce();
             });
         });
     });
 });
+
