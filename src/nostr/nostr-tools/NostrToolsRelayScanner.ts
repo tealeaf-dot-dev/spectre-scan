@@ -52,14 +52,14 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
         });
     }
 
-    scan(relayURLs: RelayURLList, filters: FiltersList): Observable<Pubkey> {
+    scan(relayURLs: RelayURLList, filters: FiltersList, retryDelay: number = 60000): Observable<Pubkey> {
 
         return from(relayURLs).pipe(
             mergeMap(relayURL => NostrToolsRelayScanner.#connectToRelay(relayURL).pipe(
-                retry({ delay: 60000 }),
+                retry({ delay: retryDelay }),
                 mergeMap(relay => NostrToolsRelayScanner.#subscribeToRelay(relay, filters)),
                 finalize(() => { console.log(`Disconnected from ${relayURL}`); }),
-                repeat({ delay: 60000 }),
+                repeat({ delay: retryDelay }),
             )),
             map(event => event.pubkey),
         );
