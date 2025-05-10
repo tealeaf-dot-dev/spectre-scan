@@ -36,6 +36,7 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
     }
 
     static #subscribeToRelay(relay: Relay, filters: FiltersList): Observable<IEvent> {
+        console.log(`Subscribing to ${relay.url}`);
 
         return new Observable<IEvent>((subscriber: Subscriber<IEvent>) => {
             const subscription = relay.subscribe(filters, {
