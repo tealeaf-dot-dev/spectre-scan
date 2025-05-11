@@ -17,8 +17,8 @@ export const scannerConfig: IPubkeyScannerConfig = {
     filters: [
         { kinds: [1] },
     ]
-}
+};
 
 export const sqliteConfig: ISQLiteConfig = {
     databasePath: './data/nostr_data.db',
-}
+};

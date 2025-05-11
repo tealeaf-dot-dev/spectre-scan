@@ -1,4 +1,4 @@
-import { ISQL } from "./interfaces/ISQL.js"
+import { ISQL } from "./interfaces/ISQL.js";
 
 export const sql: ISQL = {
     createPubkeyTable: `CREATE TABLE IF NOT EXISTS pubkeys (
@@ -9,4 +9,4 @@ export const sql: ISQL = {
         UNIQUE(pubkey, date))
         `,
     storePubkey: 'INSERT OR IGNORE INTO pubkeys (pubkey, date) VALUES (?, ?)',
-}
+};
