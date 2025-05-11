@@ -1,7 +1,7 @@
 import { Relay } from "nostr-tools";
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import WebSocket from 'ws';
-import { finalize, from, map, mergeMap, Observable, repeat, retry, Subscriber, defer } from "rxjs";
+import { finalize, from, map, mergeMap, Observable, repeat, retry, Subscriber, defer, Subject, takeUntil } from "rxjs";
 import { IRelayScannerPort } from "../../core/pubkey-scanner/ports/nostr/IRelayScannerPort.js";
 import { IEvent } from "../../shared/interfaces/IEvent.js";
 import { FiltersList, Pubkey, RelayURL, RelayURLList } from "../../shared/types.js";
@@ -10,6 +10,12 @@ import { stringifyError } from "../../shared/functions/stringifyError.js";
 useWebSocketImplementation(WebSocket);
 
 export class NostrToolsRelayScanner implements IRelayScannerPort {
+    #stopSignal$ = new Subject<void>();
+
+    stop(): void {
+        this.#stopSignal$.next();
+    }
+
     static #connectToRelay(relayURL: RelayURL): Observable<Relay> {
 
         return defer(() => {
@@ -55,13 +61,22 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
     scan(relayURLs: RelayURLList, filters: FiltersList, retryDelay: number = 60000): Observable<Pubkey> {
 
         return from(relayURLs).pipe(
+            takeUntil(this.#stopSignal$),
             mergeMap(relayURL => NostrToolsRelayScanner.#connectToRelay(relayURL).pipe(
                 retry({ delay: retryDelay }),
-                mergeMap(relay => NostrToolsRelayScanner.#subscribeToRelay(relay, filters)),
+                mergeMap(relay => NostrToolsRelayScanner.#subscribeToRelay(relay, filters).pipe(
+                    takeUntil(this.#stopSignal$),
+                    finalize(() => { 
+                        console.log(`Closing connection to ${relay.url}`);
+                        relay.close();
+                    }),
+                )),
                 finalize(() => { console.log(`Disconnected from ${relayURL}`); }),
                 repeat({ delay: retryDelay }),
+                takeUntil(this.#stopSignal$),
             )),
             map(event => event.pubkey),
+            takeUntil(this.#stopSignal$),
         );
     }
 }
