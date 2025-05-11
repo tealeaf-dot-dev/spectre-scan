@@ -8,10 +8,10 @@ export default [
         tseslint.configs.strictTypeChecked,
     ),
     {
-        files: ['src/**/*.ts'],
+        files: ['src/**/*.ts', 'tests/**/*.ts'],
         languageOptions: {
             parserOptions: {
-                projectService: true,   // enables type-aware linting.
+                project: './tsconfig.eslint.json', // <- use the new config
                 ecmaVersion: 2023,      // latest ECMAScript syntax support.
                 sourceType: 'module',   // use ES modules.
             },

@@ -1,0 +1,7 @@
+{
+    "extends": "./tsconfig.json",
+    "include": ["src/**/*.ts", "tests/**/*.ts"],
+    "compilerOptions": {
+        "noEmit": true          // don't create .js files when tsc is called via ESLint
+    }
+}
