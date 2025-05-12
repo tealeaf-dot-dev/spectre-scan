@@ -93,7 +93,7 @@ describe('SQLiteStorage', () => {
         it('throws when the storage reports a table creation error', async () => {
             const boom = new Error('create table fail');
 
-            mockDb({ runErrOnCall: 1, openErr: boom }); // first run() call fails
+            mockDb({ runErrOnCall: 1, runErr: boom }); // first run() call fails
 
             const storage = new SQLiteStorage(DB_PATH);
 
