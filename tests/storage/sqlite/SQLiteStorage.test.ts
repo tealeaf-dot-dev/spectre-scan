@@ -1,7 +1,15 @@
-import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, Mock, MockInstance } from 'vitest';
 import { SQLiteStorage } from '../../../src/storage/sqlite/SQLiteStorage.js';
 import sqlite3 from 'sqlite3';
 import { sql } from '../../../src/storage/sqlite/sql.js';
+
+type DBFactory = (
+    filename: string,
+    modeOrCb?: number | ((err: Error | null) => void),
+    cb?: (err: Error | null) => void,
+) => sqlite3.Database;
+
+type RunFn = sqlite3.Database['run'];
 
 vi.mock('sqlite3', () => import('./mocks/sqlite3-mock.js'));
 
@@ -9,15 +17,19 @@ const DB_PATH = '/path/to/database.sql';
 const PUBKEY = 'pubkey1';
 const TODAY = new Date().toISOString().split('T')[0];
 
-const dbCtor = () => sqlite3.Database as unknown as Mock<any>;
-const getRunMock = () => dbCtor().mock.instances[0].run;
+const dbCtor = () => sqlite3.Database as unknown as MockInstance<DBFactory>;
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const getRunMock = () => dbCtor().mock.instances[0].run as unknown as Mock<RunFn>;
 
 function mockDb(opts: {
     openErr?: Error | null;
     runErrOnCall?: number;
     runErr?: Error;
 } = {}) {
-    dbCtor().mockImplementationOnce(function (...args: unknown[]) {
+    dbCtor().mockImplementationOnce(function (
+        this: { run: MockInstance<RunFn> },
+        ...args: unknown[]
+    ) {
         const cb = args[1] as ((err: Error | null) => void) | undefined;
         let call = 0;
 
@@ -29,13 +41,15 @@ function mockDb(opts: {
 
                 const err = opts.runErrOnCall === call ? opts.runErr ?? new Error('boom') : null;
 
-                process.nextTick(() => next(err));
+                process.nextTick(() => { next(err); });
 
                 return this as unknown;
             },
         );
 
         cb?.(opts.openErr ?? null);
+
+        return this as unknown as sqlite3.Database;
     });
 }
 
