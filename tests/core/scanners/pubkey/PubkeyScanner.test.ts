@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { from, Observable } from 'rxjs';
-import { PubkeyScanner } from '../../../src/core/pubkey-scanner/PubkeyScanner.js';
-import { IRelayScannerPort } from '../../../src/core/pubkey-scanner/ports/nostr/IRelayScannerPort.js';
-import { IPubkeyStoragePort } from '../../../src/core/pubkey-scanner/ports/storage/IPubkeyStoragePort.js';
-import { scannerConfig } from '../../../src/config.js';
-import { Pubkey } from '../../../src/shared/types.js';
+import { PubkeyScanner } from '../../../../src/core/scanners/pubkey/PubkeyScanner.js';
+import { IRelayScannerPort } from '../../../../src/core/scanners/pubkey/ports/nostr/IRelayScannerPort.js';
+import { IPubkeyStoragePort } from '../../../../src/core/scanners/pubkey/ports/storage/IPubkeyStoragePort.js';
+import { scannerConfig } from '../../../../src/config.js';
+import { Pubkey } from '../../../../src/shared/types.js';
 
 const TEST_PUBKEYS: Pubkey[] = ['pubkey1', 'pubkey2', 'pubkey3'];
 

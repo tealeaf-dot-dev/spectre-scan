@@ -1,6 +1,6 @@
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
-import { IPubkeyStoragePort } from "../../core/pubkey-scanner/ports/storage/IPubkeyStoragePort.js";
+import { IPubkeyStoragePort } from "../../core/scanners/pubkey/ports/storage/IPubkeyStoragePort.js";
 import { Pubkey } from '../../shared/types.js';
 import { ISQL } from './interfaces/ISQL.js';
 import { sql } from './sql.js';

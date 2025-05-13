@@ -1,4 +1,4 @@
-import { Pubkey } from "../../../../shared/types.js";
+import { Pubkey } from "../../../../../shared/types.js";
 
 export interface IPubkeyStoragePort {
     init(): Promise<void>,
