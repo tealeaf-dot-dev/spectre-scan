@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, Mock, MockInstance } from 'vitest';
-import { SQLiteStorage } from '../../../src/storage/sqlite/SQLiteStorage.js';
+import { SQLiteStorage } from '../../../../src/infra/storage/sqlite/SQLiteStorage.js';
 import sqlite3 from 'sqlite3';
-import { sql } from '../../../src/storage/sqlite/sql.js';
+import { sql } from '../../../../src/infra/storage/sqlite/sql.js';
 
 type DBFactory = (
     filename: string,
