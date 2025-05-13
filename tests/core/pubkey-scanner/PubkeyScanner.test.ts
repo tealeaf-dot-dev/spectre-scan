@@ -35,6 +35,7 @@ describe('PubkeyScanner', () => {
 
             await pubkeyScanner.init();
 
+            // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(storage.init).toHaveBeenCalledOnce();
             expect(pubkeyScanner.initialized).toBe(true);
         });
@@ -58,6 +59,7 @@ describe('PubkeyScanner', () => {
             });
 
             it('sets initialized to false', () => {
+                // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(storage.init).toHaveBeenCalledOnce();
                 expect(pubkeyScanner.initialized).toBe(false);
             });
@@ -87,7 +89,9 @@ describe('PubkeyScanner', () => {
             });
 
             it('scans relays for pubkeys', () => {
+                // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(relayScanner.scan).toHaveBeenCalledOnce();
+                // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(relayScanner.scan).toHaveBeenCalledWith(
                     scannerConfig.relayURLs,
                     scannerConfig.filters,
@@ -95,8 +99,10 @@ describe('PubkeyScanner', () => {
             });
 
             it('stores discovered pubkeys', () => {
+                // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(storage.storePubkey).toHaveBeenCalledTimes(TEST_PUBKEYS.length);
                 for (const pk of TEST_PUBKEYS) {
+                    // eslint-disable-next-line @typescript-eslint/unbound-method
                     expect(storage.storePubkey).toHaveBeenCalledWith(pk, expect.any(Date));
                 }
             });
@@ -109,7 +115,9 @@ describe('PubkeyScanner', () => {
 
                 pubkeyScanner.run(scannerConfig);
 
+                // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(relayScanner.scan).not.toHaveBeenCalled();
+                // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(storage.storePubkey).not.toHaveBeenCalled();
                 expect(errorSpy).toHaveBeenCalledOnce();
             });
