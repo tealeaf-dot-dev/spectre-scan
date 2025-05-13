@@ -11,16 +11,19 @@ function createMockDatabase() {
         ) => {
             const done = typeof paramsOrCb === 'function' ? paramsOrCb : cb ?? (() => void 0);
 
-            process.nextTick(() => done(null)); // simulate success on next tick
+            process.nextTick(() => { done(null); }); // simulate success on next tick
 
             return this as unknown;             // keep it chain-friendly
         }
     );
 
-    // Use a classic function so `this` is writable.
-    const Database = vi.fn().mockImplementation(function (_path, callback) {
-        this.run = run;         // attach the spy to *this*
-        callback?.(null);       // signal “opened ok”
+    const Database = vi.fn().mockImplementation(function (
+        this: { run: typeof run },           // 👈 add this line
+        _path: string,
+        callback?: (err: Error | null) => void,
+    ) {
+        this.run = run;                       // attach the spy to *this*
+        callback?.(null);                     // signal “opened ok”
         // No explicit return → `this` becomes the instance that Vitest records
     });
 
