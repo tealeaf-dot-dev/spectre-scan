@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Relay, Filter } from "nostr-tools";
-import { SubscriptionParams } from "nostr-tools/lib/types/abstract-relay.js";
 import { WebSocketServer } from "ws";
 import { firstValueFrom, take, toArray, Subscription } from "rxjs";
 import { NostrToolsRelayScanner } from "../../../src/nostr/nostr-tools/NostrToolsRelayScanner.js";
 import { IEvent } from "../../../src/shared/interfaces/IEvent.js";
+
+type SubscriptionCallbacks = {
+    onevent?: (event: IEvent) => void;
+    onclose?: () => void;
+};
 
 let scanner: NostrToolsRelayScanner;
 let subscription: Subscription;
@@ -55,8 +59,8 @@ describe('NostrToolsRelayScanner', () => {
 
             const mockRelay1 = {
                 url: RELAY_URLS[0],
-                subscribe: vi.fn((_filters: Filter[], { onevent, onclose }: Partial<SubscriptionParams>) => {
-                    eventsRelay1.forEach(evt => onevent(evt));
+                subscribe: vi.fn((_filters: Filter[], { onevent, onclose }: SubscriptionCallbacks) => {
+                    eventsRelay1.forEach(evt => { onevent?.(evt); });
                     onclose?.();
 
                     return { close: vi.fn() };
@@ -65,8 +69,8 @@ describe('NostrToolsRelayScanner', () => {
 
             const mockRelay2 = {
                 url: RELAY_URLS[1],
-                subscribe: vi.fn((_filters: Filter[], { onevent, onclose }: Partial<SubscriptionParams>) => {
-                    eventsRelay2.forEach(evt => onevent(evt));
+                subscribe: vi.fn((_filters: Filter[], { onevent, onclose }: SubscriptionCallbacks) => {
+                    eventsRelay2.forEach(evt => { onevent?.(evt); });
                     onclose?.();
 
                     return { close: vi.fn() };
@@ -138,7 +142,7 @@ describe('NostrToolsRelayScanner', () => {
                 totalConnections1++;
             });
 
-            server2.on('connection', function connection(_ws) {
+            server2.on('connection', function connection() {
                 totalConnections2++;
             });
 
