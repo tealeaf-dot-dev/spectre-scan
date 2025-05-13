@@ -1,8 +1,8 @@
 import { IRelayScannerPort } from "./ports/nostr/IRelayScannerPort.js";
 import { IPubkeyStoragePort } from "./ports/storage/IPubkeyStoragePort.js";
 import { Pubkey } from "../../../shared/types.js";
-import { IPubkeyScannerInputPort } from "./ports/input/IPubkeyScannerInputPort.js";
-import { IPubkeyScannerConfig } from "./ports/input/dto/IPubkeyScannerConfig.js";
+import { IPubkeyScannerInputPort } from "./ports/user/IPubkeyScannerInputPort.js";
+import { IPubkeyScannerConfig } from "./ports/user/dto/IPubkeyScannerConfig.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
 
 export class PubkeyScanner implements IPubkeyScannerInputPort {

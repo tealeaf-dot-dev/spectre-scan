@@ -1,4 +1,4 @@
-import { IPubkeyScannerConfig } from "./core/scanners/pubkey/ports/input/dto/IPubkeyScannerConfig.js";
+import { IPubkeyScannerConfig } from "./core/scanners/pubkey/ports/user/dto/IPubkeyScannerConfig.js";
 
 interface ISQLiteConfig {
     databasePath: string;
