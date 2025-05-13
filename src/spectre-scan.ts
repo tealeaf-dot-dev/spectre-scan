@@ -1,5 +1,5 @@
 import { SQLiteStorage } from './infra/storage/sqlite/SQLiteStorage.js';
-import { NostrToolsRelayScanner } from './nostr/nostr-tools/NostrToolsRelayScanner.js';
+import { NostrToolsRelayScanner } from './infra/nostr/nostr-tools/NostrToolsRelayScanner.js';
 import { PubkeyScanner } from './core/scanners/pubkey/PubkeyScanner.js';
 import { scannerConfig, sqliteConfig } from './config.js';
 

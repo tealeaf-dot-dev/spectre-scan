@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Relay, Filter } from "nostr-tools";
 import { WebSocketServer } from "ws";
 import { firstValueFrom, take, toArray, Subscription } from "rxjs";
-import { NostrToolsRelayScanner } from "../../../src/nostr/nostr-tools/NostrToolsRelayScanner.js";
-import { IEvent } from "../../../src/shared/interfaces/IEvent.js";
+import { NostrToolsRelayScanner } from "../../../../src/infra/nostr/nostr-tools/NostrToolsRelayScanner.js";
+import { IEvent } from "../../../../src/shared/interfaces/IEvent.js";
 
 type SubscriptionCallbacks = {
     onevent?: (event: IEvent) => void;
