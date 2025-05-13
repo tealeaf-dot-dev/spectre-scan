@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { Relay } from "nostr-tools";
+import { Relay, Filter } from "nostr-tools";
+import { SubscriptionParams } from "nostr-tools/lib/types/abstract-relay.js";
 import { WebSocketServer } from "ws";
 import { firstValueFrom, take, toArray, Subscription } from "rxjs";
 import { NostrToolsRelayScanner } from "../../../src/nostr/nostr-tools/NostrToolsRelayScanner.js";
@@ -9,15 +10,15 @@ let scanner: NostrToolsRelayScanner;
 let subscription: Subscription;
 
 beforeEach(() => {
-  scanner = new NostrToolsRelayScanner();
+    scanner = new NostrToolsRelayScanner();
 });
 
 afterEach(async () => {
-  scanner.stop();
-  subscription?.unsubscribe();
-  await Promise.resolve();
-  vi.clearAllMocks();
-  vi.restoreAllMocks();
+    scanner.stop();
+    subscription.unsubscribe();
+    await Promise.resolve();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
 });
 
 describe('NostrToolsRelayScanner', () => {
@@ -34,9 +35,9 @@ describe('NostrToolsRelayScanner', () => {
 
             expect(connectSpy).toHaveBeenCalledTimes(RELAY_URLS.length);
 
-            RELAY_URLS.forEach(url =>
-                expect(connectSpy).toHaveBeenCalledWith(url)
-            );
+            RELAY_URLS.forEach(url => {
+                expect(connectSpy).toHaveBeenCalledWith(url);
+            });
         });
 
         it('receives events from relays and returns their pubkeys', async () => {
@@ -54,7 +55,7 @@ describe('NostrToolsRelayScanner', () => {
 
             const mockRelay1 = {
                 url: RELAY_URLS[0],
-                subscribe: vi.fn((_filters: any, { onevent, onclose }: any) => {
+                subscribe: vi.fn((_filters: Filter[], { onevent, onclose }: Partial<SubscriptionParams>) => {
                     eventsRelay1.forEach(evt => onevent(evt));
                     onclose?.();
 
@@ -64,7 +65,7 @@ describe('NostrToolsRelayScanner', () => {
 
             const mockRelay2 = {
                 url: RELAY_URLS[1],
-                subscribe: vi.fn((_filters: any, { onevent, onclose }: any) => {
+                subscribe: vi.fn((_filters: Filter[], { onevent, onclose }: Partial<SubscriptionParams>) => {
                     eventsRelay2.forEach(evt => onevent(evt));
                     onclose?.();
 
@@ -93,7 +94,7 @@ describe('NostrToolsRelayScanner', () => {
 
         it('reconnects to a relay when it refuses the connection', async() => {
             const PORT = 8093;
-            const RELAY_URL = `ws://localhost:${PORT}`;
+            const RELAY_URL = `ws://localhost:${String(PORT)}`;
             const connectSpy = vi.spyOn(Relay, 'connect');
             let connectionAttempts = 0;
 
@@ -120,8 +121,8 @@ describe('NostrToolsRelayScanner', () => {
         it('reconnects to a relay when it closes the connection', async () => {
             const PORT1 = 8091;
             const PORT2 = 8092;
-            const RELAY_URL1 = `ws://localhost:${PORT1}`;
-            const RELAY_URL2 = `ws://localhost:${PORT2}`;
+            const RELAY_URL1 = `ws://localhost:${String(PORT1)}`;
+            const RELAY_URL2 = `ws://localhost:${String(PORT2)}`;
             const RELAY_URLS = [RELAY_URL1, RELAY_URL2];
             const server1 = new WebSocketServer({ port: PORT1 });
             const server2 = new WebSocketServer({ port: PORT2 });
@@ -162,7 +163,7 @@ describe('NostrToolsRelayScanner', () => {
     describe('stop()', () => {
         it('stops scanning', async () => {
             const PORT = 8094;
-            const RELAY_URL = `ws://localhost:${PORT}`;
+            const RELAY_URL = `ws://localhost:${String(PORT)}`;
             const server = new WebSocketServer({ port: PORT });
             let completed = false;
 
@@ -185,20 +186,20 @@ describe('NostrToolsRelayScanner', () => {
         it('disconnects from all relays', async () => {
             const PORT1 = 8095;
             const PORT2 = 8096;
-            const RELAY_URL1 = `ws://localhost:${PORT1}`;
-            const RELAY_URL2 = `ws://localhost:${PORT2}`;
+            const RELAY_URL1 = `ws://localhost:${String(PORT1)}`;
+            const RELAY_URL2 = `ws://localhost:${String(PORT2)}`;
             const server1 = new WebSocketServer({ port: PORT1 });
             const server2 = new WebSocketServer({ port: PORT2 });
             let closedTimes = 0;
 
             server1.on('connection', function connection(ws) {
-                ws.on('close', function close(code, reason) {
+                ws.on('close', function close() {
                     closedTimes++;
                 });
             });
 
             server2.on('connection', function connection(ws) {
-                ws.on('close', function close(code, reason) {
+                ws.on('close', function close() {
                     closedTimes++;
                 });
             });
