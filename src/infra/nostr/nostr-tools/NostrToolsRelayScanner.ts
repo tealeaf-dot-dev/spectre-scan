@@ -79,7 +79,6 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
     scan(filters: FiltersList): Observable<Pubkey> {
 
         return from(this.#relayURLs).pipe(
-            takeUntil(this.#stopSignal$),
             mergeMap(relayURL => NostrToolsRelayScanner.#connectToRelay(relayURL).pipe(
                 retry({ delay: this.#retryDelay }),
                 mergeMap(relay => NostrToolsRelayScanner.#subscribeToRelay(relay, filters).pipe(
@@ -94,7 +93,6 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
                 takeUntil(this.#stopSignal$),
             )),
             map(event => event.pubkey),
-            takeUntil(this.#stopSignal$),
         );
     }
 }
