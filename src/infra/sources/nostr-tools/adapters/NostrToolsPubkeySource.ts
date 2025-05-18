@@ -1,4 +1,4 @@
-import { IPubkeySourcePort } from "../../../../core/scanners/pubkey/ports/nostr/IPubkeySourcePort.js";
+import { IPubkeySourcePort } from "../../../../core/scanners/pubkey/ports/source/IPubkeySourcePort.js";
 import { Pubkey } from "../../../../shared/types.js";
 import { IEvent } from "../../../../shared/interfaces/IEvent.js";
 import { AbstractNostrToolsSource } from "../AbstractNostrToolsSource.js";
