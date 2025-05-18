@@ -4,7 +4,7 @@ import { from, Observable } from 'rxjs';
 import { PubkeyScanner } from '../../../../src/core/scanners/pubkey/PubkeyScanner.js';
 import { IRelayScannerPort } from '../../../../src/core/scanners/pubkey/ports/nostr/IRelayScannerPort.js';
 import { IPubkeyStoragePort } from '../../../../src/core/scanners/pubkey/ports/storage/IPubkeyStoragePort.js';
-import { scannerConfig } from '../../../../src/config.js';
+import { pubkeyScannerConfig } from '../../../../src/config.js';
 import { Pubkey } from '../../../../src/shared/types.js';
 
 const TEST_PUBKEYS: Pubkey[] = ['pubkey1', 'pubkey2', 'pubkey3'];
@@ -84,7 +84,7 @@ describe('PubkeyScanner', () => {
                 storage.storePubkey.mockResolvedValue();
 
                 await pubkeyScanner.init();
-                pubkeyScanner.run(scannerConfig);
+                pubkeyScanner.run(pubkeyScannerConfig);
                 await new Promise(r => setTimeout(r, 0));
             });
 
@@ -93,7 +93,7 @@ describe('PubkeyScanner', () => {
                 expect(relayScanner.scan).toHaveBeenCalledOnce();
                 // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(relayScanner.scan).toHaveBeenCalledWith(
-                    scannerConfig.filters,
+                    pubkeyScannerConfig.filters,
                 );
             });
 
@@ -112,7 +112,7 @@ describe('PubkeyScanner', () => {
                 const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
                 const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-                pubkeyScanner.run(scannerConfig);
+                pubkeyScanner.run(pubkeyScannerConfig);
 
                 // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(relayScanner.scan).not.toHaveBeenCalled();

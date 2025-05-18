@@ -5,7 +5,7 @@ interface ISQLiteConfig {
     databasePath: string;
 }
 
-export const scannerConfig: IPubkeyScannerConfig = {
+export const pubkeyScannerConfig: IPubkeyScannerConfig = {
     filters: [
         { kinds: [1] },
     ],
