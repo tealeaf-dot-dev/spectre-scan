@@ -4,6 +4,7 @@ import { IPubkeyStoragePort } from "../../../core/scanners/pubkey/ports/storage/
 import { Pubkey } from '../../../shared/types.js';
 import { ISQL } from './interfaces/ISQL.js';
 import { sql } from './sql.js';
+import { ISQLiteConfig } from './interfaces/ISQLiteConfig.js';
 
 export class SQLiteStorage implements IPubkeyStoragePort {
     #databasePath: string;
@@ -12,7 +13,7 @@ export class SQLiteStorage implements IPubkeyStoragePort {
     #run: ((sql: string, ...params: unknown[]) => Promise<unknown>) | null = null;
     #sql: ISQL;
 
-    constructor(databasePath: string) {
+    constructor({ databasePath }: ISQLiteConfig) {
         this.#databasePath = databasePath;
         this.#sql = sql;
     }

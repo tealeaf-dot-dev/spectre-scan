@@ -4,7 +4,7 @@ import { pubkeyScannerConfig, sqliteConfig, nostrToolsSourceConfig } from './con
 import { NostrToolsPubkeySource } from './infra/sources/nostr-tools/adapters/NostrToolsPubkeySource.js';
 
 const source = new NostrToolsPubkeySource(nostrToolsSourceConfig);
-const storage = new SQLiteStorage(sqliteConfig.databasePath);
+const storage = new SQLiteStorage(sqliteConfig);
 const spectreScan = new PubkeyScanner(source, storage);
 
 await spectreScan.init();

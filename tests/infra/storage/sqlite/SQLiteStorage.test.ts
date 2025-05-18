@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, Mock, MockInstance } f
 import { SQLiteStorage } from '../../../../src/infra/storage/sqlite/SQLiteStorage.js';
 import sqlite3 from 'sqlite3';
 import { sql } from '../../../../src/infra/storage/sqlite/sql.js';
+import { ISQLiteConfig } from '../../../../src/infra/storage/sqlite/interfaces/ISQLiteConfig.js';
 
 type DBFactory = (
     filename: string,
@@ -16,6 +17,7 @@ vi.mock('sqlite3', () => import('./mocks/sqlite3-mock.js'));
 const DB_PATH = '/path/to/database.sql';
 const PUBKEY = 'pubkey1';
 const TODAY = new Date().toISOString().split('T')[0];
+const config: ISQLiteConfig = { databasePath: DB_PATH };
 
 const dbCtor = () => sqlite3.Database as unknown as MockInstance<DBFactory>;
 // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -58,21 +60,21 @@ describe('SQLiteStorage', () => {
 
     describe('constructor(databasePath)', () => {
         it('sets the database path', () => {
-            expect(new SQLiteStorage(DB_PATH).databasePath).toBe(DB_PATH);
+            expect(new SQLiteStorage(config).databasePath).toBe(config.databasePath);
         });
     });
 
     describe('init()', () => {
         it('creates a database', async () => {
-            const storage = new SQLiteStorage(DB_PATH);
+            const storage = new SQLiteStorage(config);
             await storage.init();
 
-            expect(dbCtor()).toHaveBeenCalledWith(DB_PATH, expect.any(Function));
+            expect(dbCtor()).toHaveBeenCalledWith(config.databasePath, expect.any(Function));
             expect(storage.initialized).toBe(true);
         });
 
         it('creates a pubkey table', async () => {
-            const storage = new SQLiteStorage(DB_PATH);
+            const storage = new SQLiteStorage(config);
             await storage.init();
 
             expect(getRunMock()).toHaveBeenCalledWith(sql.createPubkeyTable, expect.any(Function));
@@ -84,7 +86,7 @@ describe('SQLiteStorage', () => {
 
             mockDb({ openErr: boom });
 
-            const storage = new SQLiteStorage(DB_PATH);
+            const storage = new SQLiteStorage(config);
 
             await expect(storage.init()).rejects.toBe(boom);
             expect(storage.initialized).toBe(false);
@@ -95,14 +97,14 @@ describe('SQLiteStorage', () => {
 
             mockDb({ runErrOnCall: 1, runErr: boom }); // first run() call fails
 
-            const storage = new SQLiteStorage(DB_PATH);
+            const storage = new SQLiteStorage(config);
 
             await expect(storage.init()).rejects.toBe(boom);
             expect(storage.initialized).toBe(false);
         });
 
         it('throws when the database path is empty', async () => {
-            const storage = new SQLiteStorage('');
+            const storage = new SQLiteStorage({ databasePath: '' });
 
             await expect(storage.init()).rejects.toThrow('Missing database path');
             expect(storage.initialized).toBe(false);
@@ -113,7 +115,7 @@ describe('SQLiteStorage', () => {
         let storage: SQLiteStorage;
 
         beforeEach(async () => {
-            storage = new SQLiteStorage(DB_PATH);
+            storage = new SQLiteStorage(config);
             await storage.init();
         });
 
@@ -123,7 +125,7 @@ describe('SQLiteStorage', () => {
         });
 
         it('throws when the storage is uninitialized', async () => {
-            const fresh = new SQLiteStorage(DB_PATH);
+            const fresh = new SQLiteStorage(config);
 
             await expect(fresh.storePubkey(PUBKEY, new Date())).rejects.toThrow('Database not initialized');
         });
@@ -133,7 +135,7 @@ describe('SQLiteStorage', () => {
 
             mockDb({ runErrOnCall: 2, runErr: boom });      // open OK, fail on 2nd run()
 
-            const failing = new SQLiteStorage(DB_PATH);
+            const failing = new SQLiteStorage(config);
 
             await failing.init();
             await expect(failing.storePubkey(PUBKEY, new Date())).rejects.toBe(boom);
