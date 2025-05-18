@@ -20,8 +20,8 @@ function createPubkeyScanner() {
 describe('PubkeyScanner', () => {
     afterEach(() => vi.clearAllMocks());
 
-    describe('constructor(relayScanner, storage)', () => {
-        it('initializes dependencies', () => {
+    describe('constructor()', () => {
+        it('injects source and storage dependencies', () => {
             const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
 
             expect(pubkeyScanner.relayScanner).toBe(relayScanner);
@@ -88,7 +88,7 @@ describe('PubkeyScanner', () => {
                 await new Promise(r => setTimeout(r, 0));
             });
 
-            it('scans relays for pubkeys', () => {
+            it('scans for pubkeys', () => {
                 // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(relayScanner.start).toHaveBeenCalledOnce();
                 // eslint-disable-next-line @typescript-eslint/unbound-method

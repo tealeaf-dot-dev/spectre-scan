@@ -58,7 +58,7 @@ function mockDb(opts: {
 describe('SQLiteStorage', () => {
     afterEach(() => vi.clearAllMocks());
 
-    describe('constructor(databasePath)', () => {
+    describe('constructor()', () => {
         it('sets the database path', () => {
             expect(new SQLiteStorage(config).databasePath).toBe(config.databasePath);
         });
@@ -111,7 +111,7 @@ describe('SQLiteStorage', () => {
         });
     });
 
-    describe('storePubkey(pubkey)', () => {
+    describe('storePubkey()', () => {
         let storage: SQLiteStorage;
 
         beforeEach(async () => {

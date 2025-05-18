@@ -20,8 +20,8 @@ afterEach(async () => {
 });
 
 describe('NostrToolsPubkeySource', () => {
-    describe('start(relayURLs, filters, retryDelay)', () => {
-        it('connects to the relays in relayURLs', async () => {
+    describe('start()', () => {
+        it('connects to relays', async () => {
             const RELAY_URLS = ['wss://relay1.com', 'wss://relay2.com'];
             const mockSubscription = { close: vi.fn() };
             const mockRelay = { subscribe: vi.fn(() => mockSubscription) } as unknown as Relay;
@@ -169,7 +169,7 @@ describe('NostrToolsPubkeySource', () => {
     });
 
     describe('stop()', () => {
-        it('stops scanning', async () => {
+        it('stops the event stream', async () => {
             const PORT = 8094;
             const RELAY_URL = `ws://localhost:${String(PORT)}`;
             const server = new WebSocketServer({ port: PORT });
