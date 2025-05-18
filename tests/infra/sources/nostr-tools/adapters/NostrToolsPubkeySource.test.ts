@@ -27,8 +27,8 @@ describe('NostrToolsPubkeySource', () => {
             const mockRelay = { subscribe: vi.fn(() => mockSubscription) } as unknown as Relay;
             const connectSpy = vi.spyOn(Relay, 'connect')
                 .mockImplementation(() => Promise.resolve(mockRelay));
-            const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
-            subscription = scanner.start([]).subscribe();
+            const source = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
+            subscription = source.start([]).subscribe();
 
             await Promise.resolve();
 
@@ -38,7 +38,7 @@ describe('NostrToolsPubkeySource', () => {
                 expect(connectSpy).toHaveBeenCalledWith(url);
             });
 
-            scanner.stop();
+            source.stop();
         });
 
         it('receives events from relays and returns their pubkeys', async () => {
@@ -82,10 +82,10 @@ describe('NostrToolsPubkeySource', () => {
             });
 
             const totalEvents = PUBKEYS_FROM_RELAY1.length + PUBKEYS_FROM_RELAY2.length;
-            const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
+            const source = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
 
             const receivedPubkeys = await firstValueFrom(
-                scanner.start([]).pipe(take(totalEvents), toArray()),
+                source.start([]).pipe(take(totalEvents), toArray()),
             );
 
             expect(receivedPubkeys).toHaveLength(totalEvents);
@@ -93,7 +93,7 @@ describe('NostrToolsPubkeySource', () => {
                 expect.arrayContaining([...PUBKEYS_FROM_RELAY1, ...PUBKEYS_FROM_RELAY2]),
             );
 
-            scanner.stop();
+            source.stop();
         });
 
         it('reconnects to a relay when it refuses the connection', async() => {
@@ -112,15 +112,15 @@ describe('NostrToolsPubkeySource', () => {
                 }
             });
 
-            const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL], retryDelay: 0 });
-            subscription = scanner.start([]).subscribe();
+            const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL], retryDelay: 0 });
+            subscription = source.start([]).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
             expect(connectSpy).toHaveBeenCalledTimes(2);
             expect(connectionAttempts).toEqual(2);
 
-            scanner.stop();
+            source.stop();
             server.close();
         });
 
@@ -148,8 +148,8 @@ describe('NostrToolsPubkeySource', () => {
                 totalConnections2++;
             });
 
-            const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS, retryDelay: 0 });
-            subscription = scanner.start([]).subscribe();
+            const source = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS, retryDelay: 0 });
+            subscription = source.start([]).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -162,7 +162,7 @@ describe('NostrToolsPubkeySource', () => {
             expect(totalConnections1).toEqual(2);
             expect(totalConnections2).toEqual(1);
 
-            scanner.stop();
+            source.stop();
             server1.close();
             server2.close();
         });
@@ -175,22 +175,22 @@ describe('NostrToolsPubkeySource', () => {
             const server = new WebSocketServer({ port: PORT });
             let completed = false;
 
-            const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL] });
+            const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL] });
 
-            subscription = scanner.start([]).subscribe({
+            subscription = source.start([]).subscribe({
                 complete: () => { completed = true; },
             });
 
             await new Promise(res => setTimeout(res, 100));
 
-            scanner.stop();
+            source.stop();
 
             await Promise.resolve();
 
             expect(subscription.closed).toBe(true);
             expect(completed).toBe(true);
 
-            scanner.stop();
+            source.stop();
             server.close();
         });
 
@@ -215,19 +215,19 @@ describe('NostrToolsPubkeySource', () => {
                 });
             });
             
-            const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL1, RELAY_URL2] });
+            const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL1, RELAY_URL2] });
 
-            subscription = scanner.start([]).subscribe();
+            subscription = source.start([]).subscribe();
 
             await new Promise(res => setTimeout(res, 100));
 
-            scanner.stop();
+            source.stop();
 
             await new Promise(res => setTimeout(res, 100));
 
             expect(closedTimes).toEqual(2);
 
-            scanner.stop();
+            source.stop();
             server1.close();
             server2.close();
         });
