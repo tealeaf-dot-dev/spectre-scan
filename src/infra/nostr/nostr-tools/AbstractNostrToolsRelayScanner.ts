@@ -1,16 +1,16 @@
 import { Relay } from "nostr-tools";
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import WebSocket from 'ws';
-import { finalize, from, map, mergeMap, Observable, repeat, retry, Subscriber, defer, Subject, takeUntil } from "rxjs";
+import { finalize, from, mergeMap, Observable, repeat, retry, Subscriber, defer, Subject, takeUntil, map } from "rxjs";
 import { IRelayScannerPort } from "../../../core/scanners/pubkey/ports/nostr/IRelayScannerPort.js";
 import { IEvent } from "../../../shared/interfaces/IEvent.js";
-import { FiltersList, Pubkey, RelayURL, RelayURLList } from "../../../shared/types.js";
+import { FiltersList, RelayURL, RelayURLList } from "../../../shared/types.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
 import { INostrToolsRelayScannerConfig } from "./interfaces/INostrToolsRelayScannerConfig.js";
 
 useWebSocketImplementation(WebSocket);
 
-export class NostrToolsRelayScanner implements IRelayScannerPort {
+export abstract class AbstractNostrToolsRelayScanner<T> implements IRelayScannerPort<T> {
     #stopSignal$ = new Subject<void>();
     #relayURLs: RelayURLList;
     #retryDelay: number;
@@ -76,12 +76,14 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
         });
     }
 
-    scan(filters: FiltersList): Observable<Pubkey> {
+    protected abstract transform(evt: IEvent): T;
+
+    scan(filters: FiltersList): Observable<T> {
 
         return from(this.#relayURLs).pipe(
-            mergeMap(relayURL => NostrToolsRelayScanner.#connectToRelay(relayURL).pipe(
+            mergeMap(relayURL => AbstractNostrToolsRelayScanner.#connectToRelay(relayURL).pipe(
                 retry({ delay: this.#retryDelay }),
-                mergeMap(relay => NostrToolsRelayScanner.#subscribeToRelay(relay, filters).pipe(
+                mergeMap(relay => AbstractNostrToolsRelayScanner.#subscribeToRelay(relay, filters).pipe(
                     takeUntil(this.#stopSignal$),
                     finalize(() => { 
                         console.log(`Closing connection to ${relay.url}`);
@@ -92,7 +94,7 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
                 repeat({ delay: this.#retryDelay }),
                 takeUntil(this.#stopSignal$),
             )),
-            map(event => event.pubkey),
+            map((evt: IEvent) => this.transform(evt)),
         );
     }
 }
