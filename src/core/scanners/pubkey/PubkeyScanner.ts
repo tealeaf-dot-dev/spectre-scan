@@ -50,12 +50,11 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
         }
     }
 
-    run(config: IPubkeyScannerConfig): void {
-        const { relayURLs, filters } = config;
+    run({ filters }: IPubkeyScannerConfig): void {
 
         if (this.#initialized) {
             this.#relayScanner
-                .scan(relayURLs, filters)
+                .scan(filters)
                 .subscribe({
                     next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
                     error: (e: unknown) => { PubkeyScanner.#logSubscriptionError(e); },

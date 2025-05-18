@@ -93,7 +93,6 @@ describe('PubkeyScanner', () => {
                 expect(relayScanner.scan).toHaveBeenCalledOnce();
                 // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(relayScanner.scan).toHaveBeenCalledWith(
-                    scannerConfig.relayURLs,
                     scannerConfig.filters,
                 );
             });

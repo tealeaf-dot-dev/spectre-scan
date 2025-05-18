@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { Relay, Filter } from "nostr-tools";
 import { WebSocketServer } from "ws";
 import { firstValueFrom, take, toArray, Subscription } from "rxjs";
@@ -10,15 +10,9 @@ type SubscriptionCallbacks = {
     onclose?: () => void;
 };
 
-let scanner: NostrToolsRelayScanner;
 let subscription: Subscription;
 
-beforeEach(() => {
-    scanner = new NostrToolsRelayScanner();
-});
-
 afterEach(async () => {
-    scanner.stop();
     subscription.unsubscribe();
     await Promise.resolve();
     vi.clearAllMocks();
@@ -33,7 +27,8 @@ describe('NostrToolsRelayScanner', () => {
             const mockRelay = { subscribe: vi.fn(() => mockSubscription) } as unknown as Relay;
             const connectSpy = vi.spyOn(Relay, 'connect')
                 .mockImplementation(() => Promise.resolve(mockRelay));
-            subscription = scanner.scan(RELAY_URLS, []).subscribe();
+            const scanner = new NostrToolsRelayScanner({ relayURLs: RELAY_URLS });
+            subscription = scanner.scan([]).subscribe();
 
             await Promise.resolve();
 
@@ -42,6 +37,8 @@ describe('NostrToolsRelayScanner', () => {
             RELAY_URLS.forEach(url => {
                 expect(connectSpy).toHaveBeenCalledWith(url);
             });
+
+            scanner.stop();
         });
 
         it('receives events from relays and returns their pubkeys', async () => {
@@ -85,15 +82,18 @@ describe('NostrToolsRelayScanner', () => {
             });
 
             const totalEvents = PUBKEYS_FROM_RELAY1.length + PUBKEYS_FROM_RELAY2.length;
+            const scanner = new NostrToolsRelayScanner({ relayURLs: RELAY_URLS });
 
             const receivedPubkeys = await firstValueFrom(
-                scanner.scan(RELAY_URLS, []).pipe(take(totalEvents), toArray()),
+                scanner.scan([]).pipe(take(totalEvents), toArray()),
             );
 
             expect(receivedPubkeys).toHaveLength(totalEvents);
             expect(receivedPubkeys).toEqual(
                 expect.arrayContaining([...PUBKEYS_FROM_RELAY1, ...PUBKEYS_FROM_RELAY2]),
             );
+
+            scanner.stop();
         });
 
         it('reconnects to a relay when it refuses the connection', async() => {
@@ -112,13 +112,15 @@ describe('NostrToolsRelayScanner', () => {
                 }
             });
 
-            subscription = scanner.scan([RELAY_URL], [], 0).subscribe();
+            const scanner = new NostrToolsRelayScanner({ relayURLs: [RELAY_URL], retryDelay: 0 });
+            subscription = scanner.scan([]).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
             expect(connectSpy).toHaveBeenCalledTimes(2);
             expect(connectionAttempts).toEqual(2);
 
+            scanner.stop();
             server.close();
         });
 
@@ -146,7 +148,8 @@ describe('NostrToolsRelayScanner', () => {
                 totalConnections2++;
             });
 
-            subscription = scanner.scan(RELAY_URLS, [], 0).subscribe();
+            const scanner = new NostrToolsRelayScanner({ relayURLs: RELAY_URLS, retryDelay: 0 });
+            subscription = scanner.scan([]).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -159,6 +162,7 @@ describe('NostrToolsRelayScanner', () => {
             expect(totalConnections1).toEqual(2);
             expect(totalConnections2).toEqual(1);
 
+            scanner.stop();
             server1.close();
             server2.close();
         });
@@ -171,7 +175,9 @@ describe('NostrToolsRelayScanner', () => {
             const server = new WebSocketServer({ port: PORT });
             let completed = false;
 
-            subscription = scanner.scan([RELAY_URL], []).subscribe({
+            const scanner = new NostrToolsRelayScanner({ relayURLs: [RELAY_URL] });
+
+            subscription = scanner.scan([]).subscribe({
                 complete: () => { completed = true; },
             });
 
@@ -184,6 +190,7 @@ describe('NostrToolsRelayScanner', () => {
             expect(subscription.closed).toBe(true);
             expect(completed).toBe(true);
 
+            scanner.stop();
             server.close();
         });
 
@@ -207,8 +214,10 @@ describe('NostrToolsRelayScanner', () => {
                     closedTimes++;
                 });
             });
+            
+            const scanner = new NostrToolsRelayScanner({ relayURLs: [RELAY_URL1, RELAY_URL2] });
 
-            subscription = scanner.scan([RELAY_URL1, RELAY_URL2], []).subscribe();
+            subscription = scanner.scan([]).subscribe();
 
             await new Promise(res => setTimeout(res, 100));
 
@@ -218,6 +227,7 @@ describe('NostrToolsRelayScanner', () => {
 
             expect(closedTimes).toEqual(2);
 
+            scanner.stop();
             server1.close();
             server2.close();
         });

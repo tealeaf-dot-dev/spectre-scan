@@ -6,11 +6,29 @@ import { IRelayScannerPort } from "../../../core/scanners/pubkey/ports/nostr/IRe
 import { IEvent } from "../../../shared/interfaces/IEvent.js";
 import { FiltersList, Pubkey, RelayURL, RelayURLList } from "../../../shared/types.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
+import { INostrToolsRelayScannerConfig } from "./interfaces/INostrToolsRelayScannerConfig.js";
 
 useWebSocketImplementation(WebSocket);
 
 export class NostrToolsRelayScanner implements IRelayScannerPort {
     #stopSignal$ = new Subject<void>();
+    #relayURLs: RelayURLList;
+    #retryDelay: number;
+
+    constructor({ relayURLs, retryDelay = 60000 }: INostrToolsRelayScannerConfig) {
+        this.#relayURLs = relayURLs;
+        this.#retryDelay = retryDelay;
+    }
+
+    get relayURLs(): RelayURLList {
+
+        return this.#relayURLs;
+    }
+
+    get retryDelay(): number {
+
+        return this.#retryDelay;
+    }
 
     stop(): void {
         this.#stopSignal$.next();
@@ -58,12 +76,12 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
         });
     }
 
-    scan(relayURLs: RelayURLList, filters: FiltersList, retryDelay: number = 60000): Observable<Pubkey> {
+    scan(filters: FiltersList): Observable<Pubkey> {
 
-        return from(relayURLs).pipe(
+        return from(this.#relayURLs).pipe(
             takeUntil(this.#stopSignal$),
             mergeMap(relayURL => NostrToolsRelayScanner.#connectToRelay(relayURL).pipe(
-                retry({ delay: retryDelay }),
+                retry({ delay: this.#retryDelay }),
                 mergeMap(relay => NostrToolsRelayScanner.#subscribeToRelay(relay, filters).pipe(
                     takeUntil(this.#stopSignal$),
                     finalize(() => { 
@@ -72,7 +90,7 @@ export class NostrToolsRelayScanner implements IRelayScannerPort {
                     }),
                 )),
                 finalize(() => { console.log(`Disconnected from ${relayURL}`); }),
-                repeat({ delay: retryDelay }),
+                repeat({ delay: this.#retryDelay }),
                 takeUntil(this.#stopSignal$),
             )),
             map(event => event.pubkey),
