@@ -2,7 +2,7 @@ import { Relay } from "nostr-tools";
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import WebSocket from 'ws';
 import { finalize, from, mergeMap, Observable, repeat, retry, Subscriber, defer, Subject, takeUntil, map } from "rxjs";
-import { ISourcePort } from "../../../core/scanners/pubkey/ports/nostr/ISourcePort.js";
+import { ISourcePort } from "../../../core/scanners/shared/interfaces/ISourcePort.js";
 import { IEvent } from "../../../shared/interfaces/IEvent.js";
 import { FiltersList, RelayURL, RelayURLList } from "../../../shared/types.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
