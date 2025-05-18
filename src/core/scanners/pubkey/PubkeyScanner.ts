@@ -54,7 +54,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
 
         if (this.#initialized) {
             this.#relayScanner
-                .scan(filters)
+                .start(filters)
                 .subscribe({
                     next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
                     error: (e: unknown) => { PubkeyScanner.#logSubscriptionError(e); },

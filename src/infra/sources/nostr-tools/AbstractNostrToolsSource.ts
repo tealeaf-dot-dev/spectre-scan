@@ -78,7 +78,7 @@ export abstract class AbstractNostrToolsSource<T> implements ISourcePort<T> {
 
     protected abstract transform(evt: IEvent): T;
 
-    scan(filters: FiltersList): Observable<T> {
+    start(filters: FiltersList): Observable<T> {
 
         return from(this.#relayURLs).pipe(
             mergeMap(relayURL => AbstractNostrToolsSource.#connectToRelay(relayURL).pipe(

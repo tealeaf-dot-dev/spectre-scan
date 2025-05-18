@@ -80,7 +80,7 @@ describe('PubkeyScanner', () => {
                 ({ pubkeyScanner, relayScanner, storage } = createPubkeyScanner());
 
                 const pubkey$: Observable<Pubkey> = from(TEST_PUBKEYS);
-                relayScanner.scan.mockReturnValue(pubkey$);
+                relayScanner.start.mockReturnValue(pubkey$);
                 storage.storePubkey.mockResolvedValue();
 
                 await pubkeyScanner.init();
@@ -90,9 +90,9 @@ describe('PubkeyScanner', () => {
 
             it('scans relays for pubkeys', () => {
                 // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(relayScanner.scan).toHaveBeenCalledOnce();
+                expect(relayScanner.start).toHaveBeenCalledOnce();
                 // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(relayScanner.scan).toHaveBeenCalledWith(
+                expect(relayScanner.start).toHaveBeenCalledWith(
                     pubkeyScannerConfig.filters,
                 );
             });
@@ -115,7 +115,7 @@ describe('PubkeyScanner', () => {
                 pubkeyScanner.run(pubkeyScannerConfig);
 
                 // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(relayScanner.scan).not.toHaveBeenCalled();
+                expect(relayScanner.start).not.toHaveBeenCalled();
                 // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(storage.storePubkey).not.toHaveBeenCalled();
                 expect(errorSpy).toHaveBeenCalledOnce();

@@ -20,7 +20,7 @@ afterEach(async () => {
 });
 
 describe('NostrToolsPubkeySource', () => {
-    describe('scan(relayURLs, filters, retryDelay)', () => {
+    describe('start(relayURLs, filters, retryDelay)', () => {
         it('connects to the relays in relayURLs', async () => {
             const RELAY_URLS = ['wss://relay1.com', 'wss://relay2.com'];
             const mockSubscription = { close: vi.fn() };
@@ -28,7 +28,7 @@ describe('NostrToolsPubkeySource', () => {
             const connectSpy = vi.spyOn(Relay, 'connect')
                 .mockImplementation(() => Promise.resolve(mockRelay));
             const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
-            subscription = scanner.scan([]).subscribe();
+            subscription = scanner.start([]).subscribe();
 
             await Promise.resolve();
 
@@ -85,7 +85,7 @@ describe('NostrToolsPubkeySource', () => {
             const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
 
             const receivedPubkeys = await firstValueFrom(
-                scanner.scan([]).pipe(take(totalEvents), toArray()),
+                scanner.start([]).pipe(take(totalEvents), toArray()),
             );
 
             expect(receivedPubkeys).toHaveLength(totalEvents);
@@ -113,7 +113,7 @@ describe('NostrToolsPubkeySource', () => {
             });
 
             const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL], retryDelay: 0 });
-            subscription = scanner.scan([]).subscribe();
+            subscription = scanner.start([]).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -149,7 +149,7 @@ describe('NostrToolsPubkeySource', () => {
             });
 
             const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS, retryDelay: 0 });
-            subscription = scanner.scan([]).subscribe();
+            subscription = scanner.start([]).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -177,7 +177,7 @@ describe('NostrToolsPubkeySource', () => {
 
             const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL] });
 
-            subscription = scanner.scan([]).subscribe({
+            subscription = scanner.start([]).subscribe({
                 complete: () => { completed = true; },
             });
 
@@ -217,7 +217,7 @@ describe('NostrToolsPubkeySource', () => {
             
             const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL1, RELAY_URL2] });
 
-            subscription = scanner.scan([]).subscribe();
+            subscription = scanner.start([]).subscribe();
 
             await new Promise(res => setTimeout(res, 100));
 
