@@ -10,7 +10,7 @@ import { INostrToolsRelayScannerConfig } from "./interfaces/INostrToolsRelayScan
 
 useWebSocketImplementation(WebSocket);
 
-export abstract class AbstractNostrToolsRelayScanner<T> implements IRelayScannerPort<T> {
+export abstract class AbstractNostrToolsSource<T> implements IRelayScannerPort<T> {
     #stopSignal$ = new Subject<void>();
     #relayURLs: RelayURLList;
     #retryDelay: number;
@@ -81,9 +81,9 @@ export abstract class AbstractNostrToolsRelayScanner<T> implements IRelayScanner
     scan(filters: FiltersList): Observable<T> {
 
         return from(this.#relayURLs).pipe(
-            mergeMap(relayURL => AbstractNostrToolsRelayScanner.#connectToRelay(relayURL).pipe(
+            mergeMap(relayURL => AbstractNostrToolsSource.#connectToRelay(relayURL).pipe(
                 retry({ delay: this.#retryDelay }),
-                mergeMap(relay => AbstractNostrToolsRelayScanner.#subscribeToRelay(relay, filters).pipe(
+                mergeMap(relay => AbstractNostrToolsSource.#subscribeToRelay(relay, filters).pipe(
                     takeUntil(this.#stopSignal$),
                     finalize(() => { 
                         console.log(`Closing connection to ${relay.url}`);
