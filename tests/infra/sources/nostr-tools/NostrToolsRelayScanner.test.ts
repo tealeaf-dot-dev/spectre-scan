@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Relay, Filter } from "nostr-tools";
 import { WebSocketServer } from "ws";
 import { firstValueFrom, take, toArray, Subscription } from "rxjs";
-import { NostrToolsPubkeyScanner } from "../../../../src/infra/nostr/nostr-tools/adapters/NostrToolsPubkeyScanner.js";
+import { NostrToolsPubkeyScanner } from "../../../../src/infra/sources/nostr-tools/adapters/NostrToolsPubkeyScanner.js";
 import { IEvent } from "../../../../src/shared/interfaces/IEvent.js";
 
 type SubscriptionCallbacks = {
