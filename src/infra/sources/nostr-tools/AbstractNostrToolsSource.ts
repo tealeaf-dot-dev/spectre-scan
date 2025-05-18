@@ -2,7 +2,7 @@ import { Relay } from "nostr-tools";
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import WebSocket from 'ws';
 import { finalize, from, mergeMap, Observable, repeat, retry, Subscriber, defer, Subject, takeUntil, map } from "rxjs";
-import { IRelayScannerPort } from "../../../core/scanners/pubkey/ports/nostr/IRelayScannerPort.js";
+import { ISourcePort } from "../../../core/scanners/pubkey/ports/nostr/ISourcePort.js";
 import { IEvent } from "../../../shared/interfaces/IEvent.js";
 import { FiltersList, RelayURL, RelayURLList } from "../../../shared/types.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
@@ -10,7 +10,7 @@ import { INostrToolsRelayScannerConfig } from "./interfaces/INostrToolsRelayScan
 
 useWebSocketImplementation(WebSocket);
 
-export abstract class AbstractNostrToolsSource<T> implements IRelayScannerPort<T> {
+export abstract class AbstractNostrToolsSource<T> implements ISourcePort<T> {
     #stopSignal$ = new Subject<void>();
     #relayURLs: RelayURLList;
     #retryDelay: number;

@@ -1,4 +1,4 @@
-import { IPubkeyScannerPort } from "./ports/nostr/IRelayScannerPort.js";
+import { IPubkeyScannerPort } from "./ports/nostr/ISourcePort.js";
 import { IPubkeyStoragePort } from "./ports/storage/IPubkeyStoragePort.js";
 import { Pubkey } from "../../../shared/types.js";
 import { IPubkeyScannerUserPort } from "./ports/user/IPubkeyScannerUserPort.js";

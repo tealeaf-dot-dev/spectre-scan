@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { from, Observable } from 'rxjs';
 import { PubkeyScanner } from '../../../../src/core/scanners/pubkey/PubkeyScanner.js';
-import { IPubkeyScannerPort } from '../../../../src/core/scanners/pubkey/ports/nostr/IRelayScannerPort.js';
+import { IPubkeyScannerPort } from '../../../../src/core/scanners/pubkey/ports/nostr/ISourcePort.js';
 import { IPubkeyStoragePort } from '../../../../src/core/scanners/pubkey/ports/storage/IPubkeyStoragePort.js';
 import { pubkeyScannerConfig } from '../../../../src/config.js';
 import { Pubkey } from '../../../../src/shared/types.js';
