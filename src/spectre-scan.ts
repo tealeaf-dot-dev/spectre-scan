@@ -8,4 +8,4 @@ const storage = new SQLiteStorage(sqliteConfig);
 const spectreScan = new PubkeyScanner(source, storage);
 
 await spectreScan.init();
-spectreScan.run(pubkeyScannerConfig);
+spectreScan.scan(pubkeyScannerConfig);

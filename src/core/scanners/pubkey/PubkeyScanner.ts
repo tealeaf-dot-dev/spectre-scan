@@ -50,8 +50,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
         }
     }
 
-    run({ filters }: IPubkeyScannerConfig): void {
-
+    scan({ filters }: IPubkeyScannerConfig): void {
         if (this.#initialized) {
             this.#relayScanner
                 .start(filters)

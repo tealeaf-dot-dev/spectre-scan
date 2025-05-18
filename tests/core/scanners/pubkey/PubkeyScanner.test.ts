@@ -70,7 +70,7 @@ describe('PubkeyScanner', () => {
         });
     });
 
-    describe('run()', () => {
+    describe('scan()', () => {
         describe('when initialized', () => {
             let relayScanner: ReturnType<typeof mock<IPubkeySourcePort>>;
             let storage: ReturnType<typeof mock<IPubkeyStoragePort>>;
@@ -84,7 +84,7 @@ describe('PubkeyScanner', () => {
                 storage.storePubkey.mockResolvedValue();
 
                 await pubkeyScanner.init();
-                pubkeyScanner.run(pubkeyScannerConfig);
+                pubkeyScanner.scan(pubkeyScannerConfig);
                 await new Promise(r => setTimeout(r, 0));
             });
 
@@ -112,7 +112,7 @@ describe('PubkeyScanner', () => {
                 const { pubkeyScanner, relayScanner, storage } = createPubkeyScanner();
                 const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-                pubkeyScanner.run(pubkeyScannerConfig);
+                pubkeyScanner.scan(pubkeyScannerConfig);
 
                 // eslint-disable-next-line @typescript-eslint/unbound-method
                 expect(relayScanner.start).not.toHaveBeenCalled();
