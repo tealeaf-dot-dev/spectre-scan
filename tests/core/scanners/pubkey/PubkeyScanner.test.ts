@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { from, Observable } from 'rxjs';
 import { PubkeyScanner } from '../../../../src/core/scanners/pubkey/PubkeyScanner.js';
-import { IPubkeyScannerPort } from '../../../../src/core/scanners/pubkey/ports/nostr/ISourcePort.js';
+import { IPubkeySourcePort } from '../../../../src/core/scanners/pubkey/ports/nostr/IPubkeySourcePort.js';
 import { IPubkeyStoragePort } from '../../../../src/core/scanners/pubkey/ports/storage/IPubkeyStoragePort.js';
 import { pubkeyScannerConfig } from '../../../../src/config.js';
 import { Pubkey } from '../../../../src/shared/types.js';
@@ -10,7 +10,7 @@ import { Pubkey } from '../../../../src/shared/types.js';
 const TEST_PUBKEYS: Pubkey[] = ['pubkey1', 'pubkey2', 'pubkey3'];
 
 function createPubkeyScanner() {
-    const relayScanner = mock<IPubkeyScannerPort>();
+    const relayScanner = mock<IPubkeySourcePort>();
     const storage = mock<IPubkeyStoragePort>();
     const pubkeyScanner = new PubkeyScanner(relayScanner, storage);
 
@@ -72,7 +72,7 @@ describe('PubkeyScanner', () => {
 
     describe('run()', () => {
         describe('when initialized', () => {
-            let relayScanner: ReturnType<typeof mock<IPubkeyScannerPort>>;
+            let relayScanner: ReturnType<typeof mock<IPubkeySourcePort>>;
             let storage: ReturnType<typeof mock<IPubkeyStoragePort>>;
             let pubkeyScanner: PubkeyScanner;
 

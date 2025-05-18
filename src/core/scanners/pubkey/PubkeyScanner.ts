@@ -1,4 +1,4 @@
-import { IPubkeyScannerPort } from "./ports/nostr/ISourcePort.js";
+import { IPubkeySourcePort } from "./ports/nostr/IPubkeySourcePort.js";
 import { IPubkeyStoragePort } from "./ports/storage/IPubkeyStoragePort.js";
 import { Pubkey } from "../../../shared/types.js";
 import { IPubkeyScannerUserPort } from "./ports/user/IPubkeyScannerUserPort.js";
@@ -6,11 +6,11 @@ import { IPubkeyScannerConfig } from "./ports/user/dto/IPubkeyScannerConfig.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
 
 export class PubkeyScanner implements IPubkeyScannerUserPort {
-    #relayScanner: IPubkeyScannerPort;
+    #relayScanner: IPubkeySourcePort;
     #storage: IPubkeyStoragePort;
     #initialized: boolean = false;
 
-    constructor(relayScanner: IPubkeyScannerPort, storage: IPubkeyStoragePort) {
+    constructor(relayScanner: IPubkeySourcePort, storage: IPubkeyStoragePort) {
         this.#relayScanner = relayScanner;
         this.#storage = storage;
     }
@@ -20,7 +20,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
         return this.#storage;
     }
 
-    get relayScanner(): IPubkeyScannerPort {
+    get relayScanner(): IPubkeySourcePort {
 
         return this.#relayScanner;
     }
