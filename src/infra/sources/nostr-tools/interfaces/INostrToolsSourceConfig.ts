@@ -1,6 +1,6 @@
 import { RelayURLList } from "../../../../shared/types.js";
 
-export interface INostrToolsRelayScannerConfig {
+export interface INostrToolsSourceConfig {
     relayURLs: RelayURLList,
     retryDelay?: number,
 }

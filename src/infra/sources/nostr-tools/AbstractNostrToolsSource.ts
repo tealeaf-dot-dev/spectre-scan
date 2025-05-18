@@ -6,7 +6,7 @@ import { ISourcePort } from "../../../core/scanners/shared/interfaces/ISourcePor
 import { IEvent } from "../../../shared/interfaces/IEvent.js";
 import { FiltersList, RelayURL, RelayURLList } from "../../../shared/types.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
-import { INostrToolsRelayScannerConfig } from "./interfaces/INostrToolsRelayScannerConfig.js";
+import { INostrToolsSourceConfig } from "./interfaces/INostrToolsSourceConfig.js";
 
 useWebSocketImplementation(WebSocket);
 
@@ -15,7 +15,7 @@ export abstract class AbstractNostrToolsSource<T> implements ISourcePort<T> {
     #relayURLs: RelayURLList;
     #retryDelay: number;
 
-    constructor({ relayURLs, retryDelay = 60000 }: INostrToolsRelayScannerConfig) {
+    constructor({ relayURLs, retryDelay = 60000 }: INostrToolsSourceConfig) {
         this.#relayURLs = relayURLs;
         this.#retryDelay = retryDelay;
     }
