@@ -1,9 +1,6 @@
 import { IPubkeyScannerConfig } from "./core/scanners/pubkey/ports/user/dto/IPubkeyScannerConfig.js";
+import { ISQLiteConfig } from "./infra/storage/sqlite/interfaces/ISQLiteConfig.js";
 import { RelayURLList } from "./shared/types.js";
-
-interface ISQLiteConfig {
-    databasePath: string;
-}
 
 export const pubkeyScannerConfig: IPubkeyScannerConfig = {
     filters: [
