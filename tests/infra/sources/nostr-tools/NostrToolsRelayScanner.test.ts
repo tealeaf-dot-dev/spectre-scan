@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Relay, Filter } from "nostr-tools";
 import { WebSocketServer } from "ws";
 import { firstValueFrom, take, toArray, Subscription } from "rxjs";
-import { NostrToolsPubkeyScanner } from "../../../../src/infra/sources/nostr-tools/adapters/NostrToolsPubkeyScanner.js";
+import { NostrToolsPubkeySource } from "../../../../src/infra/sources/nostr-tools/adapters/NostrToolsPubkeySource.js";
 import { IEvent } from "../../../../src/shared/interfaces/IEvent.js";
 
 type SubscriptionCallbacks = {
@@ -19,7 +19,7 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-describe('NostrToolsPubkeyScanner', () => {
+describe('NostrToolsPubkeySource', () => {
     describe('scan(relayURLs, filters, retryDelay)', () => {
         it('connects to the relays in relayURLs', async () => {
             const RELAY_URLS = ['wss://relay1.com', 'wss://relay2.com'];
@@ -27,7 +27,7 @@ describe('NostrToolsPubkeyScanner', () => {
             const mockRelay = { subscribe: vi.fn(() => mockSubscription) } as unknown as Relay;
             const connectSpy = vi.spyOn(Relay, 'connect')
                 .mockImplementation(() => Promise.resolve(mockRelay));
-            const scanner = new NostrToolsPubkeyScanner({ relayURLs: RELAY_URLS });
+            const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
             subscription = scanner.scan([]).subscribe();
 
             await Promise.resolve();
@@ -82,7 +82,7 @@ describe('NostrToolsPubkeyScanner', () => {
             });
 
             const totalEvents = PUBKEYS_FROM_RELAY1.length + PUBKEYS_FROM_RELAY2.length;
-            const scanner = new NostrToolsPubkeyScanner({ relayURLs: RELAY_URLS });
+            const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
 
             const receivedPubkeys = await firstValueFrom(
                 scanner.scan([]).pipe(take(totalEvents), toArray()),
@@ -112,7 +112,7 @@ describe('NostrToolsPubkeyScanner', () => {
                 }
             });
 
-            const scanner = new NostrToolsPubkeyScanner({ relayURLs: [RELAY_URL], retryDelay: 0 });
+            const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL], retryDelay: 0 });
             subscription = scanner.scan([]).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
@@ -148,7 +148,7 @@ describe('NostrToolsPubkeyScanner', () => {
                 totalConnections2++;
             });
 
-            const scanner = new NostrToolsPubkeyScanner({ relayURLs: RELAY_URLS, retryDelay: 0 });
+            const scanner = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS, retryDelay: 0 });
             subscription = scanner.scan([]).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
@@ -175,7 +175,7 @@ describe('NostrToolsPubkeyScanner', () => {
             const server = new WebSocketServer({ port: PORT });
             let completed = false;
 
-            const scanner = new NostrToolsPubkeyScanner({ relayURLs: [RELAY_URL] });
+            const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL] });
 
             subscription = scanner.scan([]).subscribe({
                 complete: () => { completed = true; },
@@ -215,7 +215,7 @@ describe('NostrToolsPubkeyScanner', () => {
                 });
             });
             
-            const scanner = new NostrToolsPubkeyScanner({ relayURLs: [RELAY_URL1, RELAY_URL2] });
+            const scanner = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL1, RELAY_URL2] });
 
             subscription = scanner.scan([]).subscribe();
 

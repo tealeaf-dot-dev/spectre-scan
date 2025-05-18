@@ -3,7 +3,7 @@ import { Pubkey } from "../../../../shared/types.js";
 import { IEvent } from "../../../../shared/interfaces/IEvent.js";
 import { AbstractNostrToolsRelayScanner } from "../AbstractNostrToolsRelayScanner.js";
 
-export class NostrToolsPubkeyScanner extends AbstractNostrToolsRelayScanner<Pubkey> implements IPubkeyScannerPort {
+export class NostrToolsPubkeySource extends AbstractNostrToolsRelayScanner<Pubkey> implements IPubkeyScannerPort {
 
     protected transform(evt: IEvent): Pubkey {
 
