@@ -6,12 +6,12 @@ import { IPubkeyScannerConfig } from "./ports/user/dto/IPubkeyScannerConfig.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
 
 export class PubkeyScanner implements IPubkeyScannerUserPort {
-    #relayScanner: IPubkeySourcePort;
+    #source: IPubkeySourcePort;
     #storage: IPubkeyStoragePort;
     #initialized: boolean = false;
 
-    constructor(relayScanner: IPubkeySourcePort, storage: IPubkeyStoragePort) {
-        this.#relayScanner = relayScanner;
+    constructor(source: IPubkeySourcePort, storage: IPubkeyStoragePort) {
+        this.#source = source;
         this.#storage = storage;
     }
 
@@ -20,9 +20,9 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
         return this.#storage;
     }
 
-    get relayScanner(): IPubkeySourcePort {
+    get source(): IPubkeySourcePort {
 
-        return this.#relayScanner;
+        return this.#source;
     }
 
     get initialized(): boolean {
@@ -52,7 +52,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
 
     scan({ filters }: IPubkeyScannerConfig): void {
         if (this.#initialized) {
-            this.#relayScanner
+            this.#source
                 .start(filters)
                 .subscribe({
                     next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
