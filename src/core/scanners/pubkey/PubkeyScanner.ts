@@ -37,7 +37,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
             });
     }
 
-    static #logSubscriptionError(error: unknown): void {
+    static #logSourceError(error: unknown): void {
         console.error(`Subscription error: ${stringifyError(error)}`);
     }
 
@@ -56,7 +56,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
                 .start(filters)
                 .subscribe({
                     next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
-                    error: (e: unknown) => { PubkeyScanner.#logSubscriptionError(e); },
+                    error: (e: unknown) => { PubkeyScanner.#logSourceError(e); },
                 });
         } else {
             console.error('PubkeyScanner is not initialized');
