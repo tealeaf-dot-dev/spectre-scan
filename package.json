@@ -12,7 +12,7 @@
         "clean:dist": "rm -rf dist/*",
         "clean:data": "rm -rf data/*",
         "clean": "npm run clean:dist && npm run clean:data",
-        "test": "vitest --reporter=verbose",
+        "test": "vitest --reporter=default",
         "test-coverage": "vitest run --coverage"
     },
     "keywords": [
