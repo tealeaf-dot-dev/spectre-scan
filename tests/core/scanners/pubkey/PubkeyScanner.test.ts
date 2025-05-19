@@ -29,98 +29,38 @@ describe('PubkeyScanner', () => {
         });
     });
 
-    describe('init()', () => {
-        it('initializes storage', async () => {
-            const { pubkeyScanner, storage } = createPubkeyScanner();
-
-            await pubkeyScanner.init();
-
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(storage.init).toHaveBeenCalledOnce();
-            expect(pubkeyScanner.initialized).toBe(true);
-        });
-
-        describe('when storage initialization fails', () => {
-            let pubkeyScanner: PubkeyScanner;
-            let storage: ReturnType<typeof mock<IPubkeyStoragePort>>;
-            let errorSpy: ReturnType<typeof vi.spyOn>;
-
-            beforeEach(async () => {
-                ({ pubkeyScanner, storage } = createPubkeyScanner());
-
-                errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-                storage.init.mockRejectedValue(new Error('init fail'));
-
-                await pubkeyScanner.init();
-            });
-
-            afterEach(() => {
-                errorSpy.mockRestore();
-            });
-
-            it('sets initialized to false', () => {
-                // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(storage.init).toHaveBeenCalledOnce();
-                expect(pubkeyScanner.initialized).toBe(false);
-            });
-
-            it('logs an error to the console', () => {
-                expect(errorSpy).toHaveBeenCalledOnce();
-            });
-        });
-    });
-
     describe('scan()', () => {
-        describe('when initialized', () => {
-            let source: ReturnType<typeof mock<IPubkeySourcePort>>;
-            let storage: ReturnType<typeof mock<IPubkeyStoragePort>>;
-            let pubkeyScanner: PubkeyScanner;
+        let source: ReturnType<typeof mock<IPubkeySourcePort>>;
+        let storage: ReturnType<typeof mock<IPubkeyStoragePort>>;
+        let pubkeyScanner: PubkeyScanner;
 
-            beforeEach(async () => {
-                ({ pubkeyScanner, source, storage } = createPubkeyScanner());
+        beforeEach(async () => {
+            ({ pubkeyScanner, source, storage } = createPubkeyScanner());
 
-                const pubkey$: Observable<Pubkey> = from(TEST_PUBKEYS);
-                source.start.mockReturnValue(pubkey$);
-                storage.storePubkey.mockResolvedValue();
-
-                await pubkeyScanner.init();
-                pubkeyScanner.scan(pubkeyScannerConfig);
-                await new Promise(r => setTimeout(r, 0));
-            });
-
-            it('scans for pubkeys', () => {
-                // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(source.start).toHaveBeenCalledOnce();
-                // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(source.start).toHaveBeenCalledWith(
-                    pubkeyScannerConfig.filters,
-                );
-            });
-
-            it('stores discovered pubkeys', () => {
-                // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(storage.storePubkey).toHaveBeenCalledTimes(TEST_PUBKEYS.length);
-                for (const pk of TEST_PUBKEYS) {
-                    // eslint-disable-next-line @typescript-eslint/unbound-method
-                    expect(storage.storePubkey).toHaveBeenCalledWith(pk, expect.any(Date));
-                }
-            });
+            const pubkey$: Observable<Pubkey> = from(TEST_PUBKEYS);
+            source.start.mockReturnValue(pubkey$);
+            storage.storePubkey.mockResolvedValue();
+            pubkeyScanner.scan(pubkeyScannerConfig);
+            await new Promise(r => setTimeout(r, 0));
         });
 
-        describe('when uninitialized', () => {
-            it('logs an error to the console', () => {
-                const { pubkeyScanner, source, storage } = createPubkeyScanner();
-                const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        it('scans for pubkeys', () => {
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            expect(source.start).toHaveBeenCalledOnce();
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            expect(source.start).toHaveBeenCalledWith(
+                pubkeyScannerConfig.filters,
+            );
+        });
 
-                pubkeyScanner.scan(pubkeyScannerConfig);
+        it('stores discovered pubkeys', () => {
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            expect(storage.storePubkey).toHaveBeenCalledTimes(TEST_PUBKEYS.length);
 
+            for (const pk of TEST_PUBKEYS) {
                 // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(source.start).not.toHaveBeenCalled();
-                // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(storage.storePubkey).not.toHaveBeenCalled();
-                expect(errorSpy).toHaveBeenCalledOnce();
-            });
+                expect(storage.storePubkey).toHaveBeenCalledWith(pk, expect.any(Date));
+            }
         });
     });
 });
-

@@ -8,7 +8,6 @@ import { stringifyError } from "../../../shared/functions/stringifyError.js";
 export class PubkeyScanner implements IPubkeyScannerUserPort {
     #source: IPubkeySourcePort;
     #storage: IPubkeyStoragePort;
-    #initialized: boolean = false;
 
     constructor(source: IPubkeySourcePort, storage: IPubkeyStoragePort) {
         this.#source = source;
@@ -25,11 +24,6 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
         return this.#source;
     }
 
-    get initialized(): boolean {
-
-        return this.#initialized;
-    }
-
     #maybeStorePubkey(pubkey: Pubkey): void {
         this.#storage.storePubkey(pubkey, new Date())
             .catch((error: unknown) => {
@@ -41,25 +35,12 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
         console.error(`Source error: ${stringifyError(error)}`);
     }
 
-    async init(): Promise<void> {
-        try {
-            await this.#storage.init();
-            this.#initialized = true;
-        } catch (error: unknown) {
-            console.error(`Failed to initialize: ${stringifyError(error)}`);
-        }
-    }
-
     scan({ filters }: IPubkeyScannerConfig): void {
-        if (this.#initialized) {
-            this.#source
-                .start(filters)
-                .subscribe({
-                    next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
-                    error: (e: unknown) => { PubkeyScanner.#logSourceError(e); },
-                });
-        } else {
-            console.error('PubkeyScanner is not initialized');
-        }
+        this.#source
+            .start(filters)
+            .subscribe({
+                next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
+                error: (e: unknown) => { PubkeyScanner.#logSourceError(e); },
+            });
     }
 }
