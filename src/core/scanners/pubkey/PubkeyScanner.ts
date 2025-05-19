@@ -38,7 +38,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
     }
 
     static #logSourceError(error: unknown): void {
-        console.error(`Subscription error: ${stringifyError(error)}`);
+        console.error(`Source error: ${stringifyError(error)}`);
     }
 
     async init(): Promise<void> {
