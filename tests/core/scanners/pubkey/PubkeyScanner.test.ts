@@ -39,7 +39,7 @@ describe('PubkeyScanner', () => {
 
             const pubkey$: Observable<Pubkey> = from(TEST_PUBKEYS);
             source.start.mockReturnValue(pubkey$);
-            storage.storePubkey.mockResolvedValue();
+            storage.store.mockResolvedValue();
             pubkeyScanner.scan(pubkeyScannerConfig);
             await new Promise(r => setTimeout(r, 0));
         });
@@ -55,11 +55,11 @@ describe('PubkeyScanner', () => {
 
         it('stores discovered pubkeys', () => {
             // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(storage.storePubkey).toHaveBeenCalledTimes(TEST_PUBKEYS.length);
+            expect(storage.store).toHaveBeenCalledTimes(TEST_PUBKEYS.length);
 
             for (const pk of TEST_PUBKEYS) {
                 // eslint-disable-next-line @typescript-eslint/unbound-method
-                expect(storage.storePubkey).toHaveBeenCalledWith(pk, expect.any(Date));
+                expect(storage.store).toHaveBeenCalledWith({ pubkey: pk, date: expect.any(Date) as Date });
             }
         });
     });

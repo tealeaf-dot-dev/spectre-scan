@@ -1,5 +1,4 @@
-import { Pubkey } from "../../../../../shared/types.js";
+import { IStoragePort } from "../../../shared/interfaces/IStoragePort.js";
+import { IPubkeyStoragePortDTO } from "./dto/IPubkeyStoragePortDTO.js";
 
-export interface IPubkeyStoragePort {
-    storePubkey(pubkey: Pubkey, date: Date): Promise<void>,
-}
+export type IPubkeyStoragePort = IStoragePort<IPubkeyStoragePortDTO>;

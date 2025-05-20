@@ -1,12 +1,11 @@
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
-import { IPubkeyStoragePort } from "../../../core/scanners/pubkey/ports/storage/IPubkeyStoragePort.js";
-import { Pubkey } from '../../../shared/types.js';
 import { ISQL } from './interfaces/ISQL.js';
 import { sql } from './sql.js';
 import { ISQLiteConfig } from './interfaces/ISQLiteConfig.js';
+import { IStoragePort } from '../../../core/scanners/shared/interfaces/IStoragePort.js';
 
-export class SQLiteStorage implements IPubkeyStoragePort {
+export abstract class AbstractSQLiteStorage<U extends unknown[], T> implements IStoragePort<T> {
     #databasePath: string;
     #database: sqlite3.Database | null = null;
     #createdTables: boolean = false;
@@ -59,20 +58,20 @@ export class SQLiteStorage implements IPubkeyStoragePort {
         }
     }
 
-    async storePubkey(pubkey: Pubkey, date: Date): Promise<void> {
+    protected async maybeStore(sql: string, params: U): Promise<void> {
         if (!this.initialized) throw new Error('Database not initialized');
         if (!this.#run) throw new Error('Run method does not exist');
 
-        const dateStr = date.toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
-
         try {
-            await this.#run(this.#sql.storePubkey, [pubkey, dateStr]);
+            await this.#run(sql, params);
         } catch (error: unknown) {
             if (error instanceof Error) {
                 throw error;
             } else {
-                throw new Error(`Failed to add pubkey: ${String(error)}`);
+                throw new Error(`Failed to store data, error: ${String(error)}`);
             }
         }
     }
+
+    abstract store(params: T): Promise<void>;
 }

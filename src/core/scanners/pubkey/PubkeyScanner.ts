@@ -25,7 +25,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
     }
 
     #maybeStorePubkey(pubkey: Pubkey): void {
-        this.#storage.storePubkey(pubkey, new Date())
+        this.#storage.store({ pubkey, date: new Date() })
             .catch((error: unknown) => {
                 console.error(`Error storing pubkey ${pubkey}: ${stringifyError(error)}`);
             });
