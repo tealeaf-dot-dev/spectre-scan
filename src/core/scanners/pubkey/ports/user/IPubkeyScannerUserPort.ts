@@ -1,5 +1,5 @@
-import { IPubkeyScannerConfig } from "./dto/IPubkeyScannerConfig.js";
+import { IPubkeyUserPortDTO } from "./dto/IPubkeyUserPortDTO.js";
 
 export interface IPubkeyScannerUserPort {
-    scan(config: IPubkeyScannerConfig): void,
+    scan(config: IPubkeyUserPortDTO): void,
 }

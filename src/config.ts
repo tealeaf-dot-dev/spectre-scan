@@ -1,4 +1,4 @@
-import { IPubkeyScannerConfig } from "./core/scanners/pubkey/ports/user/dto/IPubkeyScannerConfig.js";
+import { IPubkeyUserPortDTO } from "./core/scanners/pubkey/ports/user/dto/IPubkeyUserPortDTO.js";
 import { INostrToolsSourceConfig } from "./infra/sources/nostr-tools/interfaces/INostrToolsSourceConfig.js";
 import { ISQLiteConfig } from "./infra/storage/sqlite/interfaces/ISQLiteConfig.js";
 import { RelayURLList } from "./shared/types.js";
@@ -13,7 +13,7 @@ export const relayURLs: RelayURLList = [
     'wss://relay.nostr.band/all',
 ];
 
-export const pubkeyScannerConfig: IPubkeyScannerConfig = {
+export const pubkeyScannerConfig: IPubkeyUserPortDTO = {
     filters: [
         { kinds: [1] },
     ],

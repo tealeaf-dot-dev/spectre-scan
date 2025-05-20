@@ -1,5 +1,5 @@
 import { FiltersList } from "../../../../../../shared/types.js";
 
-export interface IPubkeyScannerConfig {
+export interface IPubkeyUserPortDTO {
     filters: FiltersList;
 }

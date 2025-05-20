@@ -2,7 +2,7 @@ import { IPubkeySourcePort } from "./ports/source/IPubkeySourcePort.js";
 import { IPubkeyStoragePort } from "./ports/storage/IPubkeyStoragePort.js";
 import { Pubkey } from "../../../shared/types.js";
 import { IPubkeyScannerUserPort } from "./ports/user/IPubkeyScannerUserPort.js";
-import { IPubkeyScannerConfig } from "./ports/user/dto/IPubkeyScannerConfig.js";
+import { IPubkeyUserPortDTO } from "./ports/user/dto/IPubkeyUserPortDTO.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
 
 export class PubkeyScanner implements IPubkeyScannerUserPort {
@@ -35,7 +35,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
         console.error(`Source error: ${stringifyError(error)}`);
     }
 
-    scan({ filters }: IPubkeyScannerConfig): void {
+    scan({ filters }: IPubkeyUserPortDTO): void {
         this.#source
             .start(filters)
             .subscribe({
