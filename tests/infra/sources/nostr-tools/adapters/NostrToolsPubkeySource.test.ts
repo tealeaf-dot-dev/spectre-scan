@@ -113,7 +113,7 @@ describe('NostrToolsPubkeySource', () => {
             });
 
             const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL], retryDelay: 0 });
-            subscription = source.start([]).subscribe();
+            subscription = source.start({ filters: [] }).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -149,7 +149,7 @@ describe('NostrToolsPubkeySource', () => {
             });
 
             const source = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS, retryDelay: 0 });
-            subscription = source.start([]).subscribe();
+            subscription = source.start({ filters: [] }).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -177,7 +177,7 @@ describe('NostrToolsPubkeySource', () => {
 
             const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL] });
 
-            subscription = source.start([]).subscribe({
+            subscription = source.start({ filters: [] }).subscribe({
                 complete: () => { completed = true; },
             });
 
@@ -217,7 +217,7 @@ describe('NostrToolsPubkeySource', () => {
             
             const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL1, RELAY_URL2] });
 
-            subscription = source.start([]).subscribe();
+            subscription = source.start({ filters: [] }).subscribe();
 
             await new Promise(res => setTimeout(res, 100));
 

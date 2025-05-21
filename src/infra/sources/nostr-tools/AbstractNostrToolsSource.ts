@@ -7,6 +7,7 @@ import { IEvent } from "../../../shared/interfaces/IEvent.js";
 import { FiltersList, RelayURL, RelayURLList } from "../../../shared/types.js";
 import { stringifyError } from "../../../shared/functions/stringifyError.js";
 import { INostrToolsSourceConfig } from "./interfaces/INostrToolsSourceConfig.js";
+import { ISourcePortDTO } from "../../../core/scanners/shared/interfaces/ISourcePortDTO.js";
 
 useWebSocketImplementation(WebSocket);
 
@@ -78,7 +79,7 @@ export abstract class AbstractNostrToolsSource<T> implements ISourcePort<T> {
 
     protected abstract transform(evt: IEvent): T;
 
-    start(filters: FiltersList): Observable<T> {
+    start({ filters }: ISourcePortDTO): Observable<T> {
 
         return from(this.#relayURLs).pipe(
             mergeMap(relayURL => AbstractNostrToolsSource.#connectToRelay(relayURL).pipe(

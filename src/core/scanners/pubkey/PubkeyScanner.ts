@@ -1,4 +1,4 @@
-import { IPubkeySourcePort } from "./ports/source/IPubkeySourcePort.js";
+import type { IPubkeySourcePort } from "./ports/source/IPubkeySourcePort.js";
 import { IPubkeyStoragePort } from "./ports/storage/IPubkeyStoragePort.js";
 import { Pubkey } from "../../../shared/types.js";
 import { IPubkeyScannerUserPort } from "./ports/user/IPubkeyScannerUserPort.js";
@@ -37,7 +37,7 @@ export class PubkeyScanner implements IPubkeyScannerUserPort {
 
     scan({ filters }: IPubkeyUserPortDTO): void {
         this.#source
-            .start(filters)
+            .start({ filters })
             .subscribe({
                 next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
                 error: (e: unknown) => { PubkeyScanner.#logSourceError(e); },

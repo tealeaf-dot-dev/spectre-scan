@@ -1,7 +1,7 @@
 import { Observable } from "rxjs";
-import { FiltersList } from "../../../../shared/types.js";
+import { ISourcePortDTO } from "./ISourcePortDTO.js";
 
 export interface ISourcePort<T> {
-    start(filters: FiltersList): Observable<T>;
+    start(dto: ISourcePortDTO): Observable<T>;
     stop(): void;
 }

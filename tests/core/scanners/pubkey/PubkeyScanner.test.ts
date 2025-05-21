@@ -49,7 +49,7 @@ describe('PubkeyScanner', () => {
             expect(source.start).toHaveBeenCalledOnce();
             // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(source.start).toHaveBeenCalledWith(
-                pubkeyScannerConfig.filters,
+                { filters: pubkeyScannerConfig.filters },
             );
         });
 
