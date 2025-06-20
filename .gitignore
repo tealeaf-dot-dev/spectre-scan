@@ -1,4 +1,4 @@
-data
-dist
-node_modules
-coverage
+/data
+/dist
+/node_modules
+/coverage

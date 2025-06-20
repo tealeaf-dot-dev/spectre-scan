@@ -1,8 +1,15 @@
-import { describe, it, expect, vi, beforeEach, afterEach, Mock, MockInstance } from 'vitest';
+import { describe, it, expect, vi, afterEach, Mock, MockInstance, beforeEach } from 'vitest';
 import { SQLitePubkeyStorage } from '../../../../../src/infra/storage/sqlite/adapters/SQLitePubkeyStorage.js';
 import sqlite3 from 'sqlite3';
-import { sql } from '../../../../../src/infra/storage/sqlite/sql.js';
 import { ISQLiteConfig } from '../../../../../src/infra/storage/sqlite/interfaces/ISQLiteConfig.js';
+import { firstValueFrom, Subject, tap } from 'rxjs';
+import { IDomainEvent } from '../../../../../src/core/eventing/events/IDomainEvent.js';
+import { IDomainEventData } from '../../../../../src/core/eventing/data/IDomainEventData.js';
+import { IEventBusPort } from '../../../../../src/core/eventing/ports/event-bus/IEventBusPort.js';
+import { sql } from '../../../../../src/infra/storage/sqlite/sql.js';
+import { PubkeyStorageErrorEvent } from '../../../../../src/core/recorders/pubkey/eventing/events/PubkeyStorageErrorEvent.js';
+import { map, mapLeft } from "fp-ts/lib/Either.js";
+import { PubkeyStoredEvent } from '../../../../../src/core/recorders/pubkey/eventing/events/PubkeyStoredEvent.js';
 
 type DBFactory = (
     filename: string,
@@ -17,17 +24,18 @@ vi.mock('sqlite3', () => import('./mocks/sqlite3-mock.js'));
 const DB_PATH = '/path/to/database.sql';
 const PUBKEY = 'pubkey1';
 const TODAY = new Date().toISOString().split('T')[0];
-const config: ISQLiteConfig = { databasePath: DB_PATH };
 
 const dbCtor = () => sqlite3.Database as unknown as MockInstance<DBFactory>;
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const getRunMock = () => dbCtor().mock.instances[0].run as unknown as Mock<RunFn>;
 
-function mockDb(opts: {
+interface IMockDbOpts {
     openErr?: Error | null;
     runErrOnCall?: number;
     runErr?: Error;
-} = {}) {
+}
+
+function mockDb(opts: IMockDbOpts = {}) {
     dbCtor().mockImplementationOnce(function (
         this: { run: MockInstance<RunFn> },
         ...args: unknown[]
@@ -55,59 +63,133 @@ function mockDb(opts: {
     });
 }
 
+afterEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+});
+
+function createStorage(databasePath = DB_PATH, opts: IMockDbOpts = {}) {
+    const eventSubject = new Subject<IDomainEvent<IDomainEventData>>();
+
+    const eventBus: IEventBusPort = {
+        events$: eventSubject.asObservable(),
+        publish: vi.fn(),
+    };
+
+    const config: ISQLiteConfig = { databasePath, eventBus };
+
+    mockDb(opts);
+
+    const storage = new SQLitePubkeyStorage(config);
+
+    return { storage, eventBus, config };
+}
+
 describe('SQLitePubkeyStorage', () => {
-    afterEach(() => vi.clearAllMocks());
 
     describe('constructor()', () => {
-        it('sets the database path', () => {
-            expect(new SQLitePubkeyStorage(config).databasePath).toBe(config.databasePath);
+        it('initializes properties', () => {
+            const dbPath = './path/to/database.sql';
+            const { storage, eventBus } = createStorage(dbPath);
+
+            expect(storage.databasePath).toBe(dbPath);
+            expect(storage.eventBus).toBe(eventBus);
         });
     });
 
     describe('init()', () => {
         it('creates a database', async () => {
-            const storage = new SQLitePubkeyStorage(config);
+            const { storage, config } = createStorage();
             await storage.init();
 
             expect(dbCtor()).toHaveBeenCalledWith(config.databasePath, expect.any(Function));
-            expect(storage.initialized).toBe(true);
         });
 
         it('creates a pubkey table', async () => {
-            const storage = new SQLitePubkeyStorage(config);
+            const { storage } = createStorage();
             await storage.init();
 
             expect(getRunMock()).toHaveBeenCalledWith(sql.createPubkeyTable, expect.any(Function));
             expect(storage.initialized).toBe(true);
         });
 
-        it('throws when the storage reports a database open error', async () => {
-            const boom = new Error('open fail');
+        it('sets initialized to true', async () => {
+            const { storage } = createStorage();
+            await storage.init();
 
-            mockDb({ openErr: boom });
-
-            const storage = new SQLitePubkeyStorage(config);
-
-            await expect(storage.init()).rejects.toBe(boom);
-            expect(storage.initialized).toBe(false);
+            expect(storage.initialized).toEqual(true);
         });
 
-        it('throws when the storage reports a table creation error', async () => {
-            const boom = new Error('create table fail');
+        describe('when creating a database fails', () => {
+            it('publishes an error', async () => {
+                const boom = new Error('open fail');
 
-            mockDb({ runErrOnCall: 1, runErr: boom }); // first run() call fails
+                mockDb({ openErr: boom });
 
-            const storage = new SQLitePubkeyStorage(config);
+                const { storage, eventBus } = createStorage();
 
-            await expect(storage.init()).rejects.toBe(boom);
-            expect(storage.initialized).toBe(false);
+                await (storage.init());
+
+                // eslint-disable-next-line @typescript-eslint/unbound-method
+                expect(eventBus.publish).toHaveBeenCalledWith(expect.any(PubkeyStorageErrorEvent));
+            });
+
+            it('sets initialized to false', async () => {
+                const boom = new Error('open fail');
+
+                mockDb({ openErr: boom });
+
+                const { storage } = createStorage();
+
+                await (storage.init());
+
+                expect(storage.initialized).toBe(false);
+            });
         });
 
-        it('throws when the database path is empty', async () => {
-            const storage = new SQLitePubkeyStorage({ databasePath: '' });
+        describe('when creating a pubkey table fails', () => {
+            it('publishes an error', async () => {
+                const boom = new Error('create table fail');
 
-            await expect(storage.init()).rejects.toThrow('Missing database path');
-            expect(storage.initialized).toBe(false);
+                mockDb({ runErrOnCall: 1, runErr: boom }); // first run() call fails
+
+                const { storage, eventBus } = createStorage();
+
+                await (storage.init());
+
+                // eslint-disable-next-line @typescript-eslint/unbound-method
+                expect(eventBus.publish).toHaveBeenCalledWith(expect.any(PubkeyStorageErrorEvent));
+            });
+            it('sets initialized to false', async () => {
+                const boom = new Error('create table fail');
+
+                mockDb({ runErrOnCall: 1, runErr: boom }); // first run() call fails
+
+                const { storage } = createStorage();
+
+                await (storage.init());
+
+                expect(storage.initialized).toBe(false);
+            });
+        });
+
+        describe('when the database path is empty', () => {
+            it('publishes an error', async () => {
+                const { storage, eventBus } = createStorage('');
+
+                await (storage.init());
+
+                // eslint-disable-next-line @typescript-eslint/unbound-method
+                expect(eventBus.publish).toHaveBeenCalledWith(expect.any(PubkeyStorageErrorEvent));
+            });
+            
+            it('sets initialized to false', async () => {
+                const { storage } = createStorage('');
+
+                await (storage.init());
+
+                expect(storage.initialized).toBe(false);
+            });
         });
     });
 
@@ -115,30 +197,74 @@ describe('SQLitePubkeyStorage', () => {
         let storage: SQLitePubkeyStorage;
 
         beforeEach(async () => {
-            storage = new SQLitePubkeyStorage(config);
+            const obj = createStorage();
+            storage = obj.storage;
+
             await storage.init();
         });
 
-        it('stores a pubkey', async () => {
-            await storage.store({ pubkey: PUBKEY, date: new Date() });
+        it('stores a pubkey', () => {
+            storage.store({ pubkey: PUBKEY, date: new Date() });
+
             expect(getRunMock()).toHaveBeenCalledWith(sql.storePubkey, [PUBKEY, TODAY], expect.any(Function));
         });
 
-        it('throws when the storage is uninitialized', async () => {
-            const fresh = new SQLitePubkeyStorage(config);
+        it('returns a success event', async () => {
+            expect.assertions(1);
 
-            await expect(fresh.store({ pubkey: PUBKEY, date: new Date() })).rejects.toThrow('Database not initialized');
+            mockDb();
+
+            const response = storage.store({ pubkey: PUBKEY, date: new Date() });
+
+            await firstValueFrom(
+                response.pipe(
+                    tap((result) => {
+                        map(evt => { expect(evt).toBeInstanceOf(PubkeyStoredEvent); })(result);
+                    })
+                )
+            );
         });
 
-        it('throws when the storage reports an error', async () => {
-            const boom = new Error('insert fail');
+        describe('when the storage is uninitialized', () => {
+            it('returns an error event', async () => {
+                expect.assertions(1);
 
-            mockDb({ runErrOnCall: 2, runErr: boom });      // open OK, fail on 2nd run()
+                mockDb();
 
-            const failing = new SQLitePubkeyStorage(config);
+                const uninitializedStorage = createStorage().storage;
+                const response = uninitializedStorage.store({ pubkey: PUBKEY, date: new Date() });
 
-            await failing.init();
-            await expect(failing.store({ pubkey: PUBKEY, date: new Date() })).rejects.toBe(boom);
+                await firstValueFrom(
+                    response.pipe(
+                        tap((result) => {
+                            mapLeft(evt => { expect(evt).toBeInstanceOf(PubkeyStorageErrorEvent); })(result);
+                        })
+                    )
+                );
+            });
+        });
+
+        describe('when sqlite3 throws an error', () => {
+            it('returns an error event', async () => {
+                expect.assertions(1);
+
+                const boom = new Error('insert fail');
+
+                mockDb({ runErrOnCall: 2, runErr: boom });      // open OK, fail on 2nd run()
+
+                const { storage: failingStorage } = createStorage();
+                await failingStorage.init();
+
+                const response = failingStorage.store({ pubkey: PUBKEY, date: new Date() });
+
+                await firstValueFrom(
+                    response.pipe(
+                        tap((result) => {
+                            mapLeft(evt => { expect(evt).toBeInstanceOf(PubkeyStorageErrorEvent); })(result);
+                        })
+                    )
+                );
+            });
         });
     });
 });

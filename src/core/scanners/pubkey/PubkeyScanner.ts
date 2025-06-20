@@ -1,46 +1,60 @@
-import type { IPubkeySourcePort } from "./ports/source/IPubkeySourcePort.js";
-import { IPubkeyStoragePort } from "./ports/storage/IPubkeyStoragePort.js";
-import { Pubkey } from "../../../shared/types.js";
-import { IPubkeyScannerUserPort } from "./ports/user/IPubkeyScannerUserPort.js";
-import { IPubkeyUserPortDTO } from "./ports/user/dto/IPubkeyUserPortDTO.js";
-import { stringifyError } from "../../../shared/functions/stringifyError.js";
+import { FiltersList } from "../../../shared/types.js";
+import { from, mergeMap, tap, Subscription } from "rxjs"; import { IEventBusPort } from "../../eventing/ports/event-bus/IEventBusPort.js";
+import { IScanner } from "../generic/IScanner.js";
+import { SCANNER_STATUS, ScannerStatus } from "../generic/scanner-status.js";
+import { IPubkeyScannerSourcePort } from "./ports/source/IPubkeyScannerSourcePort.js";
+import { IPubkeyScannerSourcePortResponse } from "./ports/source/IPubkeyScannerSourcePortResponse.js";
 
-export class PubkeyScanner implements IPubkeyScannerUserPort {
-    #source: IPubkeySourcePort;
-    #storage: IPubkeyStoragePort;
+export class PubkeyScanner implements IScanner<IPubkeyScannerSourcePort> {
+    readonly #eventBus: IEventBusPort;
+    readonly #sources: IPubkeyScannerSourcePort[];
+    readonly #filters: FiltersList;
+    #subscription?: Subscription;
 
-    constructor(source: IPubkeySourcePort, storage: IPubkeyStoragePort) {
-        this.#source = source;
-        this.#storage = storage;
+    constructor(eventBus: IEventBusPort, sources: IPubkeyScannerSourcePort[], filters: FiltersList) {
+        this.#eventBus = eventBus;
+        this.#sources = sources;
+        this.#filters = filters;
     }
 
-    get storage(): IPubkeyStoragePort {
+    get #stream$(): IPubkeyScannerSourcePortResponse {
 
-        return this.#storage;
+        return from(this.#sources).pipe(
+            mergeMap(source => source.start({ filters: this.#filters })),
+            tap((response) => {
+                response.value.setPublishedBy(this.constructor.name); 
+                this.#eventBus.publish(response.value);
+            }),
+        );
     }
 
-    get source(): IPubkeySourcePort {
+    get eventBus(): IEventBusPort {
 
-        return this.#source;
+        return this.#eventBus;
     }
 
-    #maybeStorePubkey(pubkey: Pubkey): void {
-        this.#storage.store({ pubkey, date: new Date() })
-            .catch((error: unknown) => {
-                console.error(`Error storing pubkey ${pubkey}: ${stringifyError(error)}`);
-            });
+    get sources(): IPubkeyScannerSourcePort[] {
+
+        return this.#sources;
     }
 
-    static #logSourceError(error: unknown): void {
-        console.error(`Source error: ${stringifyError(error)}`);
+    get filters(): FiltersList {
+
+        return this.#filters;
     }
 
-    scan({ filters }: IPubkeyUserPortDTO): void {
-        this.#source
-            .start({ filters })
-            .subscribe({
-                next: (pubkey: Pubkey) => { this.#maybeStorePubkey(pubkey); },
-                error: (e: unknown) => { PubkeyScanner.#logSourceError(e); },
-            });
+    get status(): ScannerStatus {
+        if (!this.#subscription) return SCANNER_STATUS.NeverStarted;
+        if (this.#subscription.closed) return SCANNER_STATUS.Stopped;
+
+        return SCANNER_STATUS.Started;
+    }
+
+    start(): void {
+        if (this.status !== SCANNER_STATUS.Started) this.#subscription = this.#stream$.subscribe();
+    }
+
+    stop(): void {
+        if (this.status === SCANNER_STATUS.Started) this.#subscription?.unsubscribe();
     }
 }

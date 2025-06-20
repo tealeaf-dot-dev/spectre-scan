@@ -26,7 +26,12 @@ export default [
         rules: {
             '@stylistic/ts/indent': ['error', 4],
             '@stylistic/ts/semi': ['error', 'always'],
-            "@typescript-eslint/no-unused-expressions": ["error", { "allowTernary": true }]
+            "@typescript-eslint/no-unused-expressions": ["error", { "allowTernary": true }],
+            "@typescript-eslint/no-unused-vars": [
+                "error",
+                { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+            ],
+            "@typescript-eslint/no-empty-object-type": "off",
         },
     },
 ];

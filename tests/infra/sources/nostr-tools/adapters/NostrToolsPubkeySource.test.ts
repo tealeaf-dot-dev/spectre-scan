@@ -1,9 +1,15 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { mock } from 'vitest-mock-extended';
 import { Relay, Filter } from "nostr-tools";
 import { WebSocketServer } from "ws";
 import { firstValueFrom, take, toArray, Subscription } from "rxjs";
 import { NostrToolsPubkeySource } from "../../../../../src/infra/sources/nostr-tools/adapters/NostrToolsPubkeySource.js";
 import { IEvent } from "../../../../../src/shared/interfaces/IEvent.js";
+import { IEventBusPort } from "../../../../../src/core/eventing/ports/event-bus/IEventBusPort.js";
+import { PubkeySourceNotificationEvent } from "../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceNotificationEvent.js";
+import { PubkeySourceErrorEvent } from "../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js";
+import { PubkeyFoundEvent } from "../../../../../src/core/recorders/pubkey/eventing/events/PubkeyFoundEvent.js";
+import { Right } from "../../../../../src/shared/fp/monads/Either.js";
 
 type SubscriptionCallbacks = {
     onevent?: (event: IEvent) => void;
@@ -12,23 +18,46 @@ type SubscriptionCallbacks = {
 
 let subscription: Subscription;
 
-afterEach(async () => {
-    subscription.unsubscribe();
-    await Promise.resolve();
+afterEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
 });
 
 describe('NostrToolsPubkeySource', () => {
+    describe('constructor()', () => {
+        it('initializes properties', () => {
+            const RELAY_URLS = ['wss://relay1.com', 'wss://relay2.com'];
+            const eventBus = mock<IEventBusPort>();
+            const retryDelay = 1234;
+
+            const source = new NostrToolsPubkeySource({ eventBus, retryDelay, relayURLs: RELAY_URLS });
+
+            expect(source.eventBus).toStrictEqual(eventBus);
+            expect(source.relayURLs).toStrictEqual(RELAY_URLS);
+            expect(source.retryDelay).toStrictEqual(retryDelay);
+        });
+    });
+    
     describe('start()', () => {
+        afterEach(async () => {
+            subscription.unsubscribe();
+            await Promise.resolve();
+        });
+
         it('connects to relays', async () => {
             const RELAY_URLS = ['wss://relay1.com', 'wss://relay2.com'];
             const mockSubscription = { close: vi.fn() };
-            const mockRelay = { subscribe: vi.fn(() => mockSubscription) } as unknown as Relay;
+
+            const mockRelay = {
+                subscribe: vi.fn(() => mockSubscription),
+                close: vi.fn(),
+            } as unknown as Relay;
+
+            const eventBus = mock<IEventBusPort>();
             const connectSpy = vi.spyOn(Relay, 'connect')
                 .mockImplementation(() => Promise.resolve(mockRelay));
-            const source = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
-            subscription = source.start([]).subscribe();
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS });
+            subscription = source.start({ filters: [] }).subscribe();
 
             await Promise.resolve();
 
@@ -45,6 +74,7 @@ describe('NostrToolsPubkeySource', () => {
             const RELAY_URLS = ['wss://relay1.com', 'wss://relay2.com'];
             const PUBKEYS_FROM_RELAY1 = ['pubkey1', 'pubkey2'];
             const PUBKEYS_FROM_RELAY2 = ['pubkey3'];
+            const eventBus = mock<IEventBusPort>();
 
             const eventsRelay1 = PUBKEYS_FROM_RELAY1.map(
                 pk => ({ pubkey: pk } as unknown as IEvent),
@@ -82,16 +112,195 @@ describe('NostrToolsPubkeySource', () => {
             });
 
             const totalEvents = PUBKEYS_FROM_RELAY1.length + PUBKEYS_FROM_RELAY2.length;
-            const source = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS });
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS });
 
-            const receivedPubkeys = await firstValueFrom(
-                source.start([]).pipe(take(totalEvents), toArray()),
+            const results = await firstValueFrom(
+                source.start({ filters: [] }).pipe(take(totalEvents), toArray()),
             );
 
-            expect(receivedPubkeys).toHaveLength(totalEvents);
-            expect(receivedPubkeys).toEqual(
-                expect.arrayContaining([...PUBKEYS_FROM_RELAY1, ...PUBKEYS_FROM_RELAY2]),
-            );
+            expect(results).toHaveLength(totalEvents);
+
+            results.forEach(evt => {
+                expect(evt).toBeInstanceOf(Right);
+                expect(evt.value).toBeInstanceOf(PubkeyFoundEvent);
+            });
+
+            const foundPubkeys = results.map(result => result.value.data.pubkey);
+
+            expect (foundPubkeys.sort()).toStrictEqual([...PUBKEYS_FROM_RELAY1, ...PUBKEYS_FROM_RELAY2].sort());
+
+            source.stop();
+        });
+
+        it('publishes a notification when connecting to a relay', async () => {
+            const RELAY_URLS = ['wss://relay1.com'];
+            const mockSubscription = { close: vi.fn() };
+            const mockRelay = {
+                url: RELAY_URLS[0],
+                subscribe: vi.fn(() => mockSubscription),
+                close: vi.fn(),
+            } as unknown as Relay;
+
+            const eventBus = mock<IEventBusPort>();
+
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            const publishSpy = eventBus.publish;
+
+            vi.spyOn(Relay, 'connect').mockImplementation(() => Promise.resolve(mockRelay));
+
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS });
+            subscription = source.start({ filters: [] }).subscribe();
+
+            await Promise.resolve();
+
+            const publishedNotification = publishSpy.mock.calls
+                .map(call => call[0])
+                .find(evt =>
+                    evt instanceof PubkeySourceNotificationEvent &&
+                    evt.notification.includes(
+                        `Connecting to ${RELAY_URLS[0]}`,
+                    ),
+                );
+
+            expect(publishedNotification).toBeDefined();
+
+            source.stop();
+        });
+
+        it('publishes a notification when connected to a relay', async () => {
+            const RELAY_URLS = ['wss://relay1.com'];
+            const mockSubscription = { close: vi.fn() };
+
+            const mockRelay = {
+                url: RELAY_URLS[0],
+                subscribe: vi.fn(() => mockSubscription),
+                close: vi.fn(),
+            } as unknown as Relay;
+
+            const eventBus = mock<IEventBusPort>();
+
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            const publishSpy = eventBus.publish;
+
+            vi.spyOn(Relay, 'connect').mockImplementation(() => Promise.resolve(mockRelay));
+
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS });
+            subscription = source.start({ filters: [] }).subscribe();
+
+            await Promise.resolve();
+
+            const publishedNotification = publishSpy.mock.calls
+                .map(call => call[0])
+                .find(evt =>
+                    evt instanceof PubkeySourceNotificationEvent &&
+                    evt.notification.includes(
+                        `Connected to ${RELAY_URLS[0]}`,
+                    ),
+                );
+
+            expect(publishedNotification).toBeDefined();
+
+            source.stop();
+        });
+
+        it('publishes a notification when subscribing to a relay', async () => {
+            const RELAY_URLS = ['wss://relay1.com'];
+            const mockSubscription = { close: vi.fn() };
+
+            const mockRelay = {
+                url: RELAY_URLS[0],
+                subscribe: vi.fn(() => mockSubscription),
+                close: vi.fn(),
+            } as unknown as Relay;
+
+            const eventBus = mock<IEventBusPort>();
+
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            const publishSpy = eventBus.publish;
+
+            vi.spyOn(Relay, 'connect').mockImplementation(() => Promise.resolve(mockRelay));
+
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS });
+            subscription = source.start({ filters: [] }).subscribe();
+
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+
+            const publishedNotification = publishSpy.mock.calls
+                .map(call => call[0])
+                .find(evt =>
+                    evt instanceof PubkeySourceNotificationEvent &&
+                    evt.notification.includes(
+                        `Subscribing to ${RELAY_URLS[0]}`,
+                    ),
+                );
+
+            expect(publishedNotification).toBeDefined();
+
+            source.stop();
+        });
+
+        it('publishes an error when failing to connect to a relay', async () => {
+            const RELAY_URL = 'wss://relay-error.com';
+            const ERROR_MESSAGE = 'Connection failed';
+
+            vi.spyOn(Relay, 'connect').mockImplementation(() => Promise.reject(new Error(ERROR_MESSAGE)));
+
+            const eventBus = mock<IEventBusPort>();
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
+
+            subscription = source.start({ filters: [] }).subscribe({
+                error: () => { /* ignore */ },
+            });
+
+            await new Promise(res => setTimeout(res, 0));
+
+            const publishedError = eventBus.publish.mock.calls
+                .map(call => call[0])
+                .find(evt =>
+                    evt instanceof PubkeySourceErrorEvent &&
+                    evt.error.includes(`Failed to connect to ${RELAY_URL}`)
+                );
+
+            expect(publishedError).toBeDefined();
+
+            source.stop();
+        });
+
+        it('publishes an error when a relay disconnects', async () => {
+            const RELAY_URL = 'wss://relay1.com';
+            const mockSubscription = { close: vi.fn() };
+
+            const mockRelay = {
+                url: RELAY_URL,
+                subscribe: vi.fn((_filters: Filter[], { onclose }: SubscriptionCallbacks) => {
+                    onclose?.(); // immediately close connection
+                    return mockSubscription;
+                }),
+                close: vi.fn(),
+            } as unknown as Relay;
+
+            const eventBus = mock<IEventBusPort>();
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            const publishSpy = eventBus.publish;
+
+            vi.spyOn(Relay, 'connect').mockResolvedValue(mockRelay);
+
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
+            subscription = source.start({ filters: [] }).subscribe();
+
+            await new Promise(res => setTimeout(res, 0));
+
+            const publishedError = publishSpy.mock.calls
+                .map(call => call[0])
+                .find(
+                    evt =>
+                        evt instanceof PubkeySourceErrorEvent &&
+                        evt.error.includes(`Disconnected from ${RELAY_URL}`),
+                );
+
+            expect(publishedError).toBeDefined();
 
             source.stop();
         });
@@ -100,19 +309,19 @@ describe('NostrToolsPubkeySource', () => {
             const PORT = 8093;
             const RELAY_URL = `ws://localhost:${String(PORT)}`;
             const connectSpy = vi.spyOn(Relay, 'connect');
+            const eventBus = mock<IEventBusPort>();
             let connectionAttempts = 0;
 
             const server = new WebSocketServer({
                 port: PORT,
                 verifyClient: (_info, done) => {
-                    console.log('verifyClient');
                     connectionAttempts++;
 
                     connectionAttempts === 1 ? done(false) : done(true);
                 }
             });
 
-            const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL], retryDelay: 0 });
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
             subscription = source.start({ filters: [] }).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
@@ -124,7 +333,7 @@ describe('NostrToolsPubkeySource', () => {
             server.close();
         });
 
-        it('reconnects to a relay when it closes the connection', async () => {
+        it('reconnects to a relay when it disconnects', async () => {
             const PORT1 = 8091;
             const PORT2 = 8092;
             const RELAY_URL1 = `ws://localhost:${String(PORT1)}`;
@@ -133,6 +342,7 @@ describe('NostrToolsPubkeySource', () => {
             const server1 = new WebSocketServer({ port: PORT1 });
             const server2 = new WebSocketServer({ port: PORT2 });
             const connectSpy = vi.spyOn(Relay, 'connect');
+            const eventBus = mock<IEventBusPort>();
             let totalConnections1 = 0;
             let totalConnections2 = 0;
 
@@ -148,7 +358,7 @@ describe('NostrToolsPubkeySource', () => {
                 totalConnections2++;
             });
 
-            const source = new NostrToolsPubkeySource({ relayURLs: RELAY_URLS, retryDelay: 0 });
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS, retryDelay: 0 });
             subscription = source.start({ filters: [] }).subscribe();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
@@ -173,9 +383,10 @@ describe('NostrToolsPubkeySource', () => {
             const PORT = 8094;
             const RELAY_URL = `ws://localhost:${String(PORT)}`;
             const server = new WebSocketServer({ port: PORT });
+            const eventBus = mock<IEventBusPort>();
             let completed = false;
 
-            const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL] });
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL] });
 
             subscription = source.start({ filters: [] }).subscribe({
                 complete: () => { completed = true; },
@@ -201,6 +412,7 @@ describe('NostrToolsPubkeySource', () => {
             const RELAY_URL2 = `ws://localhost:${String(PORT2)}`;
             const server1 = new WebSocketServer({ port: PORT1 });
             const server2 = new WebSocketServer({ port: PORT2 });
+            const eventBus = mock<IEventBusPort>();
             let closedTimes = 0;
 
             server1.on('connection', function connection(ws) {
@@ -215,7 +427,7 @@ describe('NostrToolsPubkeySource', () => {
                 });
             });
             
-            const source = new NostrToolsPubkeySource({ relayURLs: [RELAY_URL1, RELAY_URL2] });
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL1, RELAY_URL2] });
 
             subscription = source.start({ filters: [] }).subscribe();
 
@@ -230,6 +442,44 @@ describe('NostrToolsPubkeySource', () => {
             source.stop();
             server1.close();
             server2.close();
+        });
+
+        it('publishes a notification when disconnecting from a relay', async () => {
+            const RELAY_URL = 'wss://relay1.com';
+            const mockSubscription = { close: vi.fn() };
+
+            const mockRelay = {
+                url: RELAY_URL,
+                subscribe: vi.fn(() => mockSubscription),
+                close: vi.fn(),
+            } as unknown as Relay;
+
+            const eventBus = mock<IEventBusPort>();
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            const publishSpy = eventBus.publish;
+
+            vi.spyOn(Relay, 'connect').mockResolvedValue(mockRelay);
+
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL] });
+            subscription = source.start({ filters: [] }).subscribe();
+
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+
+            source.stop();
+
+            await new Promise(res => setTimeout(res, 0)); // wait for finalize
+
+            const publishedNotification = publishSpy.mock.calls
+                .map(call => call[0])
+                .find(
+                    evt =>
+                        evt instanceof PubkeySourceNotificationEvent &&
+                        evt.notification.includes(`Closing connection to ${RELAY_URL}`),
+                );
+
+            expect(publishedNotification).toBeDefined();
         });
     });
 });

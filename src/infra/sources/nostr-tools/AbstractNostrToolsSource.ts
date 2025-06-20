@@ -2,23 +2,42 @@ import { Relay } from "nostr-tools";
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import WebSocket from 'ws';
 import { finalize, from, mergeMap, Observable, repeat, retry, Subscriber, defer, Subject, takeUntil, map } from "rxjs";
-import { ISourcePort } from "../../../core/scanners/shared/interfaces/ISourcePort.js";
 import { IEvent } from "../../../shared/interfaces/IEvent.js";
 import { FiltersList, RelayURL, RelayURLList } from "../../../shared/types.js";
-import { stringifyError } from "../../../shared/functions/stringifyError.js";
 import { INostrToolsSourceConfig } from "./interfaces/INostrToolsSourceConfig.js";
-import { ISourcePortDTO } from "../../../core/scanners/shared/interfaces/ISourcePortDTO.js";
+import { IScannerSourcePort } from "../../../core/scanners/generic/ports/source/IScannerSourcePort.js";
+import { IEventBusPort } from "../../../core/eventing/ports/event-bus/IEventBusPort.js";
+import { stringifyError } from "../../../shared/utils/stringifyError.js";
+import { IScannerSourcePortResponse } from "../../../core/scanners/generic/ports/source/IScannerSourcePortResponse.js";
+import { IScannerSourcePortRequest } from "../../../core/scanners/generic/ports/source/IScannerSourcePortRequest.js";
+import { AbstractDomainErrorEvent } from "../../../core/eventing/events/AbstractDomainErrorEvent.js";
+import { AbstractDomainActionEvent } from "../../../core/eventing/events/AbstractDomainActionEvent.js";
+import { IDomainEventData } from "../../../core/eventing/data/IDomainEventData.js";
+import { Either } from "../../../shared/fp/monads/Either.js";
+import { IDomainEvent } from "../../../core/eventing/events/IDomainEvent.js";
 
 useWebSocketImplementation(WebSocket);
 
-export abstract class AbstractNostrToolsSource<T> implements ISourcePort<T> {
+export abstract class AbstractNostrToolsSource<
+    ErrorEvent extends AbstractDomainErrorEvent,
+    SuccessEvent extends AbstractDomainActionEvent<IDomainEventData>,
+    SourceRequest extends IScannerSourcePortRequest,
+    SourceResponse extends IScannerSourcePortResponse<ErrorEvent, SuccessEvent>
+> implements IScannerSourcePort<SourceRequest, SourceResponse> {
     #stopSignal$ = new Subject<void>();
     #relayURLs: RelayURLList;
     #retryDelay: number;
+    protected readonly _eventBus: IEventBusPort;
 
-    constructor({ relayURLs, retryDelay = 60000 }: INostrToolsSourceConfig) {
+    constructor({ eventBus, relayURLs, retryDelay = 60000 }: INostrToolsSourceConfig) {
         this.#relayURLs = relayURLs;
         this.#retryDelay = retryDelay;
+        this._eventBus = eventBus;
+    }
+
+    get eventBus(): IEventBusPort {
+
+        return this._eventBus;
     }
 
     get relayURLs(): RelayURLList {
@@ -35,20 +54,29 @@ export abstract class AbstractNostrToolsSource<T> implements ISourcePort<T> {
         this.#stopSignal$.next();
     }
 
-    static #connectToRelay(relayURL: RelayURL): Observable<Relay> {
+    protected publishEvent(evt: IDomainEvent<IDomainEventData>) {
+        evt.setPublishedBy(this.constructor.name);
+        this.eventBus.publish(evt);
+    }
+
+    protected abstract publishNotification(message: string): void;
+
+    protected abstract publishError(error: string): void;
+
+    #connectToRelay(relayURL: RelayURL): Observable<Relay> {
 
         return defer(() => {
-            console.log(`Connecting to ${relayURL}`);
+            this.publishNotification(`Connecting to ${relayURL}`);
 
             return from(
                 Relay.connect(relayURL)
                     .then((relay) => {
-                        console.log(`Connected to ${relayURL}`);
+                        this.publishNotification(`Connected to ${relayURL}`);
 
                         return relay;
                     })
                     .catch((error: unknown) => {
-                        console.log(`Failed to connect to ${relayURL}: ${stringifyError(error)}`);
+                        this.publishError(`Failed to connect to ${relayURL}: ${stringifyError(error)}`);
 
                         if (error instanceof Error) {
                             throw error;
@@ -60,8 +88,8 @@ export abstract class AbstractNostrToolsSource<T> implements ISourcePort<T> {
         });
     }
 
-    static #subscribeToRelay(relay: Relay, filters: FiltersList): Observable<IEvent> {
-        console.log(`Subscribing to ${relay.url}`);
+    #subscribeToRelay(relay: Relay, filters: FiltersList): Observable<IEvent> {
+        this.publishNotification(`Subscribing to ${relay.url}`);
 
         return new Observable<IEvent>((subscriber: Subscriber<IEvent>) => {
             const subscription = relay.subscribe(filters, {
@@ -77,25 +105,25 @@ export abstract class AbstractNostrToolsSource<T> implements ISourcePort<T> {
         });
     }
 
-    protected abstract transform(evt: IEvent): T;
+    protected abstract transform(evt: IEvent): Either<ErrorEvent, SuccessEvent>;
 
-    start({ filters }: ISourcePortDTO): Observable<T> {
+    start({ filters }: SourceRequest): SourceResponse {
 
         return from(this.#relayURLs).pipe(
-            mergeMap(relayURL => AbstractNostrToolsSource.#connectToRelay(relayURL).pipe(
+            mergeMap(relayURL => this.#connectToRelay(relayURL).pipe(
                 retry({ delay: this.#retryDelay }),
-                mergeMap(relay => AbstractNostrToolsSource.#subscribeToRelay(relay, filters).pipe(
+                mergeMap(relay => this.#subscribeToRelay(relay, filters).pipe(
                     takeUntil(this.#stopSignal$),
                     finalize(() => { 
-                        console.log(`Closing connection to ${relay.url}`);
+                        this.publishNotification(`Closing connection to ${relay.url}`);
                         relay.close();
                     }),
                 )),
-                finalize(() => { console.log(`Disconnected from ${relayURL}`); }),
+                finalize(() => { this.publishError(`Disconnected from ${relayURL}`); }),
                 repeat({ delay: this.#retryDelay }),
                 takeUntil(this.#stopSignal$),
             )),
             map((evt: IEvent) => this.transform(evt)),
-        );
+        ) as SourceResponse;
     }
 }
