@@ -6,12 +6,12 @@ import { IEventBusPort } from '../../../../src/core/eventing/ports/event-bus/IEv
 import { PubkeyFoundEvent } from '../../../../src/core/recorders/pubkey/eventing/events/PubkeyFoundEvent.js';
 import { PubkeySourceErrorEvent } from '../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js';
 import { IPubkeyScannerSourcePort } from '../../../../src/core/scanners/pubkey/ports/source/IPubkeyScannerSourcePort.js';
-import { pubkeyFilters } from '../../../../src/config.js';
+import { pubkeyScannerConfig } from '../../../../src/config.js';
 import { Either, left, map, right } from 'fp-ts/lib/Either.js';
 
 const DATE = new Date();
-
 const ERROR_EVENT_INDEX = 1;
+const pubkeyFilters = pubkeyScannerConfig.filters;
 
 const EVENTS: Either<PubkeySourceErrorEvent, PubkeyFoundEvent>[] = ['pubkey1', 'pubkey2', 'pubkey3']
     .map((pubkey, index) => {

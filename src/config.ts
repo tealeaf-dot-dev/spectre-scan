@@ -1,18 +1,36 @@
 import { FiltersList } from "./core/data/types.js";
 import { RelayURLList } from "./infra/sources/data/types.js";
 
-export const relayURLs: RelayURLList = [
-    'wss://relay.damus.io',
-    'wss://nostr-pub.wellorder.net',
-    'wss://nos.lol',
-    'wss://relay.snort.social',
-    'wss://relay.nostr.bg',
-    'wss://offchain.pub',
-    'wss://relay.nostr.band/all',
-];
+interface INostrToolsPubkeySourceConfig {
+    relayURLs: RelayURLList,
+}
 
-export const pubkeyFilters: FiltersList = [
-    { kinds: [1] },
-];
+interface IPubkeyScannerConfig {
+    filters: FiltersList,
+}
 
-export const databasePath = './data/nostr_data.db';
+interface ISQLitePubkeyStorageConfig {
+    databasePath: string,
+}
+
+export const nostrToolsPubkeySourceConfig: INostrToolsPubkeySourceConfig = {
+    relayURLs: [
+        'wss://relay.damus.io',
+        'wss://nostr-pub.wellorder.net',
+        'wss://nos.lol',
+        'wss://relay.snort.social',
+        'wss://relay.nostr.bg',
+        'wss://offchain.pub',
+        'wss://relay.nostr.band/all',
+    ]
+};
+
+export const pubkeyScannerConfig: IPubkeyScannerConfig = {
+    filters: [
+        { kinds: [1] },
+    ],
+};
+
+export const sqlitePubkeyStorageConfig: ISQLitePubkeyStorageConfig = {
+    databasePath:  './data/nostr_data.db',
+};
