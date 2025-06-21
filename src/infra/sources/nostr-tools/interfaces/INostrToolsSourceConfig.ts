@@ -1,5 +1,5 @@
 import { IEventBusPort } from "../../../../core/eventing/ports/event-bus/IEventBusPort.js";
-import { RelayURLList } from "../../shared/types.js";
+import { RelayURLList } from "../../data/types.js";
 
 export interface INostrToolsSourceConfig {
     eventBus: IEventBusPort;

@@ -1,5 +1,5 @@
 import { FiltersList } from "./core/data/types.js";
-import { RelayURLList } from "./infra/sources/shared/types.js";
+import { RelayURLList } from "./infra/sources/data/types.js";
 
 export const relayURLs: RelayURLList = [
     'wss://relay.damus.io',
