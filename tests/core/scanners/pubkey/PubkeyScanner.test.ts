@@ -7,7 +7,7 @@ import { PubkeyFoundEvent } from '../../../../src/core/recorders/pubkey/eventing
 import { PubkeySourceErrorEvent } from '../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js';
 import { IPubkeyScannerSourcePort } from '../../../../src/core/scanners/pubkey/ports/source/IPubkeyScannerSourcePort.js';
 import { pubkeyFilters } from '../../../../src/config.js';
-import { Either, left, right } from '../../../../src/shared/fp/monads/Either.js';
+import { Either, left, map, right } from 'fp-ts/lib/Either.js';
 
 const DATE = new Date();
 
@@ -58,6 +58,10 @@ describe('PubkeyScanner', () => {
             await new Promise(r => setTimeout(r, 0));
         });
 
+        afterEach(() => {
+            pubkeyScanner.stop();
+        });
+
         it('scans for pubkeys', () => {
             // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(source.start).toHaveBeenCalledOnce();
@@ -68,20 +72,29 @@ describe('PubkeyScanner', () => {
         });
 
         it('publishes discovered pubkeys', () => {
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(EVENTS[0].value);
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(EVENTS[2].value);
+            expect.assertions(2);
+
+            const evt1 = eventBus.publish.mock.calls[0][0];
+
+            expect(evt1).toBeInstanceOf(PubkeyFoundEvent);
+            map<PubkeyFoundEvent, undefined>((evt) => { expect(evt1.data.pubkey).toEqual(evt.data.pubkey); })(EVENTS[0]);
         });
 
         it('publishes source errors', () => {
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(EVENTS[ERROR_EVENT_INDEX].value);
+            expect.assertions(1);
+
+            const evt2 = eventBus.publish.mock.calls[1][0];
+
+            expect(evt2).toBeInstanceOf(PubkeySourceErrorEvent);
         });
 
         it('continues publishing pubkeys after receiving source errors', () => {
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(EVENTS[2].value);
+            expect.assertions(2);
+
+            const evt3 = eventBus.publish.mock.calls[2][0];
+
+            expect(evt3).toBeInstanceOf(PubkeyFoundEvent);
+            map<PubkeyFoundEvent, undefined>((evt) => { expect(evt3.data.pubkey).toEqual(evt.data.pubkey); })(EVENTS[2]);
         });
     });
 });

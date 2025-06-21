@@ -9,7 +9,7 @@ import { IEventBusPort } from "../../../../../src/core/eventing/ports/event-bus/
 import { PubkeySourceNotificationEvent } from "../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceNotificationEvent.js";
 import { PubkeySourceErrorEvent } from "../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js";
 import { PubkeyFoundEvent } from "../../../../../src/core/recorders/pubkey/eventing/events/PubkeyFoundEvent.js";
-import { Right } from "../../../../../src/shared/fp/monads/Either.js";
+import { bimap, isRight, map, right, sequenceArray } from "fp-ts/lib/Either.js";
 
 type SubscriptionCallbacks = {
     onevent?: (event: IEvent) => void;
@@ -121,13 +121,22 @@ describe('NostrToolsPubkeySource', () => {
             expect(results).toHaveLength(totalEvents);
 
             results.forEach(evt => {
-                expect(evt).toBeInstanceOf(Right);
-                expect(evt.value).toBeInstanceOf(PubkeyFoundEvent);
+                expect(isRight(evt)).toEqual(true);
+                bimap(
+                    (evt: PubkeySourceErrorEvent) => { expect(evt).toBeInstanceOf(PubkeyFoundEvent); },
+                    (evt: PubkeyFoundEvent) => { expect(evt).toBeInstanceOf(PubkeyFoundEvent); },
+                )(evt);
             });
 
-            const foundPubkeys = results.map(result => result.value.data.pubkey);
+            const foundPubkeys = sequenceArray(
+                results.map(
+                    result => map((evt: PubkeyFoundEvent) => evt.data.pubkey)(result)
+                ).sort()
+            );
 
-            expect (foundPubkeys.sort()).toStrictEqual([...PUBKEYS_FROM_RELAY1, ...PUBKEYS_FROM_RELAY2].sort());
+            expect(foundPubkeys).toStrictEqual(right(
+                [...PUBKEYS_FROM_RELAY1, ...PUBKEYS_FROM_RELAY2].sort()
+            ));
 
             source.stop();
         });

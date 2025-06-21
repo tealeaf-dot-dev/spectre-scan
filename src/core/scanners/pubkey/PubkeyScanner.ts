@@ -4,6 +4,11 @@ import { IScanner } from "../generic/IScanner.js";
 import { SCANNER_STATUS, ScannerStatus } from "../generic/scanner-status.js";
 import { IPubkeyScannerSourcePort } from "./ports/source/IPubkeyScannerSourcePort.js";
 import { IPubkeyScannerSourcePortResponse } from "./ports/source/IPubkeyScannerSourcePortResponse.js";
+import { bimap } from "fp-ts/lib/Either.js";
+import { PubkeyFoundEvent } from "../../recorders/pubkey/eventing/events/PubkeyFoundEvent.js";
+import { IDomainEvent } from "../../eventing/events/IDomainEvent.js";
+import { IDomainEventData } from "../../eventing/data/IDomainEventData.js";
+import { PubkeySourceErrorEvent } from "./eventing/events/PubkeySourceErrorEvent.js";
 
 export class PubkeyScanner implements IScanner<IPubkeyScannerSourcePort> {
     readonly #eventBus: IEventBusPort;
@@ -22,8 +27,10 @@ export class PubkeyScanner implements IScanner<IPubkeyScannerSourcePort> {
         return from(this.#sources).pipe(
             mergeMap(source => source.start({ filters: this.#filters })),
             tap((response) => {
-                response.value.setPublishedBy(this.constructor.name); 
-                this.#eventBus.publish(response.value);
+                bimap(
+                    (evt: PubkeySourceErrorEvent) => { this.#publishEvent(evt); },
+                    (evt: PubkeyFoundEvent) => { this.#publishEvent(evt); }
+                )(response);
             }),
         );
     }
@@ -48,6 +55,11 @@ export class PubkeyScanner implements IScanner<IPubkeyScannerSourcePort> {
         if (this.#subscription.closed) return SCANNER_STATUS.Stopped;
 
         return SCANNER_STATUS.Started;
+    }
+
+    #publishEvent(evt: IDomainEvent<IDomainEventData>): void {
+        evt.setPublishedBy(this.constructor.name);
+        this.#eventBus.publish(evt);
     }
 
     start(): void {

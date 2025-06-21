@@ -13,8 +13,8 @@ import { IScannerSourcePortRequest } from "../../../core/scanners/generic/ports/
 import { AbstractDomainErrorEvent } from "../../../core/eventing/events/AbstractDomainErrorEvent.js";
 import { AbstractDomainActionEvent } from "../../../core/eventing/events/AbstractDomainActionEvent.js";
 import { IDomainEventData } from "../../../core/eventing/data/IDomainEventData.js";
-import { Either } from "../../../shared/fp/monads/Either.js";
 import { IDomainEvent } from "../../../core/eventing/events/IDomainEvent.js";
+import { Either } from "fp-ts/lib/Either.js";
 
 useWebSocketImplementation(WebSocket);
 

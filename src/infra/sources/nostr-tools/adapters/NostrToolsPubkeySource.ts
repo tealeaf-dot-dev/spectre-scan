@@ -5,8 +5,8 @@ import { PubkeySourceErrorEvent } from "../../../../core/scanners/pubkey/eventin
 import { PubkeyFoundEvent } from "../../../../core/recorders/pubkey/eventing/events/PubkeyFoundEvent.js";
 import { IPubkeyScannerSourcePortRequest } from "../../../../core/scanners/pubkey/ports/source/IPubkeyScannerSourcePortRequest.js";
 import { IPubkeyScannerSourcePortResponse } from "../../../../core/scanners/pubkey/ports/source/IPubkeyScannerSourcePortResponse.js";
-import { right } from "../../../../shared/fp/monads/Either.js";
 import { PubkeySourceNotificationEvent } from "../../../../core/scanners/pubkey/eventing/events/PubkeySourceNotificationEvent.js";
+import { Either, right } from "fp-ts/lib/Either.js";
 
 export class NostrToolsPubkeySource extends AbstractNostrToolsSource<
     PubkeySourceErrorEvent,
@@ -29,9 +29,9 @@ export class NostrToolsPubkeySource extends AbstractNostrToolsSource<
         );
     }
 
-    protected transform(nostrEvent: IEvent) {
+    protected transform(nostrEvent: IEvent): Either<PubkeySourceErrorEvent, PubkeyFoundEvent> {
         const evt = new PubkeyFoundEvent(this.constructor.name, { pubkey: nostrEvent.pubkey, date: new Date() });
 
-        return right<PubkeySourceErrorEvent, PubkeyFoundEvent>(evt);
+        return right(evt);
     }
 }

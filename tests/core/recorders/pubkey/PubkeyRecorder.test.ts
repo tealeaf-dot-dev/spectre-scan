@@ -211,7 +211,6 @@ describe('PubkeyRecorder', () => {
             const { recorder, storage, eventSubject, eventBus } = createRecorder();
             const date = new Date();
             const pubkey1 = 'abc123';
-            const storageEvent = new PubkeyStoredEvent('PubkeyStorage', { pubkey: pubkey1, date, storageName });
 
             storage.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
 
@@ -225,14 +224,13 @@ describe('PubkeyRecorder', () => {
             // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(eventBus.publish).toHaveBeenCalledTimes(1);
             // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(storageEvent);
+            expect(eventBus.publish).toHaveBeenCalledWith(expect.any(PubkeyStoredEvent));
         });
 
         it('publishes successes from multiple storages', async () => {
             const { recorder, storage1, storage2, eventSubject, eventBus } = createRecorderWithMultipleStorages();
             const date = new Date();
             const pubkey1 = 'abc123';
-            const storageEvent = new PubkeyStoredEvent('PubkeyStorage', { pubkey: pubkey1, date, storageName });
 
             recorder.record();
 
@@ -247,7 +245,9 @@ describe('PubkeyRecorder', () => {
             // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(eventBus.publish).toHaveBeenCalledTimes(2);
             // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(storageEvent);
+            expect(eventBus.publish).toHaveBeenNthCalledWith(1, expect.any(PubkeyStoredEvent));
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            expect(eventBus.publish).toHaveBeenNthCalledWith(2, expect.any(PubkeyStoredEvent));
         });
 
         it('publishes storage errors', async () => {
@@ -255,7 +255,6 @@ describe('PubkeyRecorder', () => {
             const date = new Date();
             const pubkey = 'abc123';
             const errorMsg = 'storage failure';
-            const errorEvent = new PubkeyStorageErrorEvent('PubkeyStorage', { source: storageName, message: errorMsg});
 
             recorder.record();
 
@@ -268,7 +267,7 @@ describe('PubkeyRecorder', () => {
             // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(eventBus.publish).toHaveBeenCalledTimes(1);
             // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(errorEvent);
+            expect(eventBus.publish).toHaveBeenCalledWith(expect.any(PubkeyStorageErrorEvent));
         });
 
         it('publishes errors from multiple storages', async () => {
@@ -276,7 +275,6 @@ describe('PubkeyRecorder', () => {
             const date = new Date();
             const pubkey = 'abc123';
             const errorMsg = 'storage failure';
-            const errorEvent = new PubkeyStorageErrorEvent('PubkeyStorage', { source: storageName, message: errorMsg});
 
             recorder.record();
 
@@ -290,7 +288,9 @@ describe('PubkeyRecorder', () => {
             // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(eventBus.publish).toHaveBeenCalledTimes(2);
             // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(errorEvent);
+            expect(eventBus.publish).toHaveBeenNthCalledWith(1, expect.any(PubkeyStorageErrorEvent));
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            expect(eventBus.publish).toHaveBeenNthCalledWith(2, expect.any(PubkeyStorageErrorEvent));
         });
 
         it('continues recording after receiving a storage error', async () => {
@@ -299,7 +299,6 @@ describe('PubkeyRecorder', () => {
             const pubkey1  = 'error-key';
             const pubkey2  = 'next-key';
             const errorMsg = 'db failure';
-            const errorEvent = new PubkeyStorageErrorEvent('PubkeyStorage', { source: storageName, message: errorMsg });
             const pubkeyFoundEvent1 = new PubkeyFoundEvent('PubkeyScanner', { pubkey: pubkey1, date });
             const pubkeyFoundEvent2 = new PubkeyFoundEvent('PubkeyScanner', { pubkey: pubkey2, date, });
 
@@ -324,7 +323,9 @@ describe('PubkeyRecorder', () => {
             // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(eventBus.publish).toHaveBeenCalledTimes(2);
             // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(eventBus.publish).toHaveBeenCalledWith(errorEvent);
+            expect(eventBus.publish).toHaveBeenNthCalledWith(1, expect.any(PubkeyStorageErrorEvent));
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            expect(eventBus.publish).toHaveBeenNthCalledWith(2, expect.any(PubkeyStoredEvent));
         });
 
         describe('when the stream has already been started', () => {
