@@ -1,4 +1,4 @@
-import { Pubkey } from "../../../../../shared/types.js";
+import { Pubkey } from "../../../../data/types.js";
 import { AbstractDomainActionEvent } from "../../../../eventing/events/AbstractDomainActionEvent.js";
 import { IPubkeyStoredEventData } from "../data/IPubkeyStoredEventData.js";
 

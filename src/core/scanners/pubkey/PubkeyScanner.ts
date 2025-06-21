@@ -1,4 +1,3 @@
-import { FiltersList } from "../../../shared/types.js";
 import { from, mergeMap, tap, Subscription } from "rxjs"; import { IEventBusPort } from "../../eventing/ports/event-bus/IEventBusPort.js";
 import { IScanner } from "../generic/IScanner.js";
 import { SCANNER_STATUS, ScannerStatus } from "../generic/scanner-status.js";
@@ -9,6 +8,7 @@ import { PubkeyFoundEvent } from "../../recorders/pubkey/eventing/events/PubkeyF
 import { IDomainEvent } from "../../eventing/events/IDomainEvent.js";
 import { IDomainEventData } from "../../eventing/data/IDomainEventData.js";
 import { PubkeySourceErrorEvent } from "./eventing/events/PubkeySourceErrorEvent.js";
+import { FiltersList } from "../../data/types.js";
 
 export class PubkeyScanner implements IScanner<IPubkeyScannerSourcePort> {
     readonly #eventBus: IEventBusPort;

@@ -1,4 +1,3 @@
-import { Pubkey } from "../../../shared/types.js";
 import { filter, Subscription, mergeMap, from, tap } from "rxjs";
 import { IEventBusPort } from "../../eventing/ports/event-bus/IEventBusPort.js";
 import { IRecorder } from "../generic/IRecorder.js";
@@ -11,6 +10,7 @@ import { IDomainEventData } from "../../eventing/data/IDomainEventData.js";
 import { bimap } from "fp-ts/lib/Either.js";
 import { PubkeyStorageErrorEvent } from "./eventing/events/PubkeyStorageErrorEvent.js";
 import { PubkeyStoredEvent } from "./eventing/events/PubkeyStoredEvent.js";
+import { Pubkey } from "../../data/types.js";
 
 export class PubkeyRecorder implements IRecorder<IPubkeyStoragePort> {
     readonly #eventBus: IEventBusPort;

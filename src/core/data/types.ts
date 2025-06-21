@@ -1,4 +1,4 @@
-import { IFilter } from "./interfaces/IFilter.js";
+import { IFilter } from "./IFilter.js";
 
 export type Pubkey = string;
 export type FiltersList = IFilter[];

@@ -4,7 +4,7 @@ import { Subject, of } from 'rxjs';
 import { IEventBusPort } from '../../../../src/core/eventing/ports/event-bus/IEventBusPort.js';
 import { PubkeyRecorder } from '../../../../src/core/recorders/pubkey/PubkeyRecorder.js';
 import { IDomainEvent } from '../../../../src/core/eventing/events/IDomainEvent.js';
-import { Pubkey } from '../../../../src/shared/types.js';
+import { Pubkey } from '../../../../src/core/data/types.js';
 import { AbstractDomainEvent } from '../../../../src/core/eventing/events/AbstractDomainEvent.js';
 import { RECORDER_STATUS } from '../../../../src/core/recorders/generic/recorder-status.js';
 import { IPubkeyStoragePort } from '../../../../src/core/recorders/pubkey/ports/storage/IPubkeyStoragePort.js';

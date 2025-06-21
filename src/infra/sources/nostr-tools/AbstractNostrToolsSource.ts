@@ -2,8 +2,6 @@ import { Relay } from "nostr-tools";
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import WebSocket from 'ws';
 import { finalize, from, mergeMap, Observable, repeat, retry, Subscriber, defer, Subject, takeUntil, map } from "rxjs";
-import { IEvent } from "../../../shared/interfaces/IEvent.js";
-import { FiltersList } from "../../../shared/types.js";
 import { RelayURL, RelayURLList } from "../shared/types.js";
 import { INostrToolsSourceConfig } from "./interfaces/INostrToolsSourceConfig.js";
 import { IScannerSourcePort } from "../../../core/scanners/generic/ports/source/IScannerSourcePort.js";
@@ -16,6 +14,8 @@ import { AbstractDomainActionEvent } from "../../../core/eventing/events/Abstrac
 import { IDomainEventData } from "../../../core/eventing/data/IDomainEventData.js";
 import { IDomainEvent } from "../../../core/eventing/events/IDomainEvent.js";
 import { Either } from "fp-ts/lib/Either.js";
+import { FiltersList } from "../../../core/data/types.js";
+import { IEvent } from "../../../core/data/IEvent.js";
 
 useWebSocketImplementation(WebSocket);
 

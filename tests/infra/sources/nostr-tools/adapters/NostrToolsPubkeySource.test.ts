@@ -4,7 +4,7 @@ import { Relay, Filter } from "nostr-tools";
 import { WebSocketServer } from "ws";
 import { firstValueFrom, take, toArray, Subscription } from "rxjs";
 import { NostrToolsPubkeySource } from "../../../../../src/infra/sources/nostr-tools/adapters/NostrToolsPubkeySource.js";
-import { IEvent } from "../../../../../src/shared/interfaces/IEvent.js";
+import { IEvent } from "../../../../../src/core/data/IEvent.js";
 import { IEventBusPort } from "../../../../../src/core/eventing/ports/event-bus/IEventBusPort.js";
 import { PubkeySourceNotificationEvent } from "../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceNotificationEvent.js";
 import { PubkeySourceErrorEvent } from "../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js";

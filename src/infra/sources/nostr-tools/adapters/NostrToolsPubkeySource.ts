@@ -1,4 +1,3 @@
-import { IEvent } from "../../../../shared/interfaces/IEvent.js";
 import { AbstractNostrToolsSource } from "../AbstractNostrToolsSource.js";
 import { IScannerSourcePort } from "../../../../core/scanners/generic/ports/source/IScannerSourcePort.js";
 import { PubkeySourceErrorEvent } from "../../../../core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js";
@@ -7,6 +6,7 @@ import { IPubkeyScannerSourcePortRequest } from "../../../../core/scanners/pubke
 import { IPubkeyScannerSourcePortResponse } from "../../../../core/scanners/pubkey/ports/source/IPubkeyScannerSourcePortResponse.js";
 import { PubkeySourceNotificationEvent } from "../../../../core/scanners/pubkey/eventing/events/PubkeySourceNotificationEvent.js";
 import { Either, right } from "fp-ts/lib/Either.js";
+import { IEvent } from "../../../../core/data/IEvent.js";
 
 export class NostrToolsPubkeySource extends AbstractNostrToolsSource<
     PubkeySourceErrorEvent,

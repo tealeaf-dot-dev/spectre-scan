@@ -2,12 +2,12 @@ import { map } from 'rxjs';
 import { PubkeyStoredEvent } from "../../../../core/recorders/pubkey/eventing/events/PubkeyStoredEvent.js";
 import { IRecorderStoragePort } from "../../../../core/recorders/generic/ports/storage/IRecorderStoragePort.js";
 import { IPubkeyStoragePortRequest } from "../../../../core/recorders/pubkey/ports/storage/IPubkeyStoragePortRequest.js";
-import { Pubkey } from "../../../../shared/types.js";
 import { AbstractSQLiteStorage } from "../AbstractSQLiteStorage.js";
 import { sql } from "../sql.js";
 import { IPubkeyStoragePortResponse } from "../../../../core/recorders/pubkey/ports/storage/IPubkeyStoragePortResponse.js";
 import { PubkeyStorageErrorEvent } from '../../../../core/recorders/pubkey/eventing/events/PubkeyStorageErrorEvent.js';
 import { bimap, Either } from 'fp-ts/lib/Either.js';
+import { Pubkey } from '../../../../core/data/types.js';
 
 type IPubkeyStoragePortSQLParams = [Pubkey, string];
 
