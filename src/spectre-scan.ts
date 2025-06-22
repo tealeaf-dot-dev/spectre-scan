@@ -19,7 +19,7 @@ const recorder = new PubkeyRecorder(eventBus, [storage]);
 
 try {
     await storage.init();
-    recorder.record();
+    recorder.start();
     scanner.start();
 
     eventBus.events$.pipe(

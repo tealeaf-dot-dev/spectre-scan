@@ -80,10 +80,10 @@ describe('PubkeyRecorder', () => {
         });
     });
 
-    describe('record()', () => {
+    describe('start()', () => {
         it('sets the status to started', () => {
             const { recorder } = createRecorder();
-            recorder.record();
+            recorder.start();
 
             expect(recorder.status).toEqual(RECORDER_STATUS.Started);
         });
@@ -95,7 +95,7 @@ describe('PubkeyRecorder', () => {
             const pubkey2 = 'def456';
             const pubkey3 = 'ghi789';
 
-            recorder.record();
+            recorder.start();
 
             storage.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
             eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkey1, date, }));
@@ -124,7 +124,7 @@ describe('PubkeyRecorder', () => {
             const pubkey2 = 'def456';
             const pubkey3 = 'ghi789';
 
-            recorder.record();
+            recorder.start();
 
             storage1.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
             storage2.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
@@ -186,7 +186,7 @@ describe('PubkeyRecorder', () => {
                 }
             }
 
-            recorder.record();
+            recorder.start();
 
             storage.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
             eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkey1, date }));
@@ -214,7 +214,7 @@ describe('PubkeyRecorder', () => {
 
             storage.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
 
-            recorder.record();
+            recorder.start();
             eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkey1, date }));
 
             await Promise.resolve();
@@ -232,7 +232,7 @@ describe('PubkeyRecorder', () => {
             const date = new Date();
             const pubkey1 = 'abc123';
 
-            recorder.record();
+            recorder.start();
 
             storage1.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
             storage2.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
@@ -256,7 +256,7 @@ describe('PubkeyRecorder', () => {
             const pubkey = 'abc123';
             const errorMsg = 'storage failure';
 
-            recorder.record();
+            recorder.start();
 
             storage.store.mockReturnValue(createStorageFailureResponse(storageName, errorMsg));
             eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkey, date, }));
@@ -276,7 +276,7 @@ describe('PubkeyRecorder', () => {
             const pubkey = 'abc123';
             const errorMsg = 'storage failure';
 
-            recorder.record();
+            recorder.start();
 
             storage1.store.mockReturnValue(createStorageFailureResponse(storageName, errorMsg));
             storage2.store.mockReturnValue(createStorageFailureResponse(storageName, errorMsg));
@@ -302,7 +302,7 @@ describe('PubkeyRecorder', () => {
             const pubkeyFoundEvent1 = new PubkeyFoundEvent('PubkeyScanner', { pubkey: pubkey1, date });
             const pubkeyFoundEvent2 = new PubkeyFoundEvent('PubkeyScanner', { pubkey: pubkey2, date, });
 
-            recorder.record();
+            recorder.start();
 
             storage.store.mockReturnValue(createStorageFailureResponse(storageName, errorMsg));
             eventSubject.next(pubkeyFoundEvent1);
@@ -336,8 +336,8 @@ describe('PubkeyRecorder', () => {
                 const pubkey2 = 'def456';
                 const pubkey3 = 'ghi789';
 
-                recorder.record();
-                recorder.record();
+                recorder.start();
+                recorder.start();
 
                 storage.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
                 eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkey1, date }));
@@ -368,7 +368,7 @@ describe('PubkeyRecorder', () => {
                 const pubkey2 = 'def456';
                 const pubkey3 = 'ghi789';
 
-                recorder.record();
+                recorder.start();
 
                 storage.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
                 eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkey1, date }));
@@ -376,7 +376,7 @@ describe('PubkeyRecorder', () => {
                 eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkey2, date }));
 
                 recorder.stop();
-                recorder.record();
+                recorder.start();
 
                 storage.store.mockReturnValue(createStorageSuccessResponse(pubkey3, date, storageName));
                 eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkey3, date }));
@@ -396,9 +396,9 @@ describe('PubkeyRecorder', () => {
 
             it('sets the status to started', () => {
                 const { recorder } = createRecorder();
-                recorder.record();
+                recorder.start();
                 recorder.stop();
-                recorder.record();
+                recorder.start();
 
                 expect(recorder.status).toEqual(RECORDER_STATUS.Started);
             });
@@ -408,7 +408,7 @@ describe('PubkeyRecorder', () => {
     describe('stop()', () => {
         it('sets the status to stopped', () => {
             const { recorder } = createRecorder();
-            recorder.record();
+            recorder.start();
             recorder.stop();
 
             expect(recorder.status).toEqual(RECORDER_STATUS.Stopped);
@@ -420,7 +420,7 @@ describe('PubkeyRecorder', () => {
             const pubkeyBeforeStop = 'before-stop';
             const pubkeyAfterStop  = 'after-stop';
 
-            recorder.record();
+            recorder.start();
 
             storage.store.mockReturnValue(createStorageSuccessResponse(pubkeyBeforeStop, date, storageName));
             eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkeyBeforeStop, date }));
@@ -449,7 +449,7 @@ describe('PubkeyRecorder', () => {
                 const pubkeyBeforeStop = 'before-stop';
                 const pubkeyAfterStop  = 'after-stop';
 
-                recorder.record();
+                recorder.start();
 
                 storage.store.mockReturnValue(createStorageSuccessResponse(pubkeyBeforeStop, date, storageName));
                 eventSubject.next(new PubkeyFoundEvent('PubkeySource', { pubkey: pubkeyBeforeStop, date }));
