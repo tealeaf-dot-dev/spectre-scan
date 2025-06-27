@@ -1,7 +1,7 @@
 import { Relay } from "nostr-tools";
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import WebSocket from 'ws';
-import { finalize, from, mergeMap, Observable, repeat, retry, Subscriber, defer, Subject, takeUntil, map } from "rxjs";
+import { finalize, from, mergeMap, Observable, repeat, retry, Subscriber, Subject, takeUntil, map } from "rxjs";
 import { RelayURL, RelayURLList } from "../data/types.js";
 import { INostrToolsSourceConfig } from "./interfaces/INostrToolsSourceConfig.js";
 import { IScannerSourcePort } from "../../../core/scanners/generic/ports/source/IScannerSourcePort.js";
@@ -66,26 +66,26 @@ export abstract class AbstractNostrToolsSource<
 
     #connectToRelay(relayURL: RelayURL): Observable<Relay> {
 
-        return defer(() => {
+        return new Observable<Relay>(subscriber => {
             this.publishNotification(`Connecting to ${relayURL}`);
 
-            return from(
-                Relay.connect(relayURL)
-                    .then((relay) => {
-                        this.publishNotification(`Connected to ${relayURL}`);
+            const relayPromise = Relay.connect(relayURL);
 
-                        return relay;
-                    })
-                    .catch((error: unknown) => {
-                        this.publishError(`Failed to connect to ${relayURL}: ${stringifyError(error)}`);
+            relayPromise
+                .then(relay => {
+                    this.publishNotification(`Connected to ${relayURL}`);
+                    subscriber.next(relay);
+                    subscriber.complete();
+                })
+                .catch((error: unknown) => {
+                    this.publishError(`Failed to connect to ${relayURL}: ${stringifyError(error)}`);
 
-                        if (error instanceof Error) {
-                            throw error;
-                        } else {
-                            throw new Error(`Connection error: ${String(error)}`);
-                        }
-                    })
-            );
+                    subscriber.error(
+                        error instanceof Error ? error : new Error(`Connection error: ${String(error)}`)
+                    );
+                });
+
+            return () => {};
         });
     }
 
