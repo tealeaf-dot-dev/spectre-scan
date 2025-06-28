@@ -6,7 +6,6 @@
     "scripts": {
         "build": "mkdir -p dist && tsc",
         "start": "mkdir -p data && node dist/spectre-scan.js",
-        "start": "mkdir -p data && node dist/spectre-scan.js",
         "lint": "eslint src tests --ext .ts",
         "lint:fix": "eslint --fix src tests --ext .ts",
         "clean:dist": "rm -rf dist/*",
