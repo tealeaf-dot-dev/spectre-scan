@@ -5,4 +5,5 @@ export interface INostrToolsSourceConfig {
     eventBus: IEventBusPort;
     relayURLs: RelayURLList,
     retryDelay?: number,
+    connectionTimeoutDelay?: number,
 }
