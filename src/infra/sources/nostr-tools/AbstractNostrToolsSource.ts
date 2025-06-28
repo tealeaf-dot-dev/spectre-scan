@@ -137,12 +137,6 @@ export abstract class AbstractNostrToolsSource<
                         subscriber.error(err);
                     }
                 },
-                oneose: () => {
-                    // we are creating streaming connections so the relay should not EOSE
-                    const err = `${relay.url} EOSE'd`;
-                    this.publishError(err);
-                    subscriber.error(err);
-                },
             });
 
             return () => {
