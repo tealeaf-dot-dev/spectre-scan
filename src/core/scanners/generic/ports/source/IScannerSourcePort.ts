@@ -6,5 +6,4 @@ export interface IScannerSourcePort<
     ScannerResponse extends ScannerSourcePortResponse
 > {
     start(request: ScannerRequest): ScannerResponse;
-    stop(): void;
 }

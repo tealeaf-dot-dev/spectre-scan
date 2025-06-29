@@ -1,16 +1,18 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { mock } from 'vitest-mock-extended';
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { Relay, Filter } from "nostr-tools";
 import { WebSocketServer } from "ws";
-import { firstValueFrom, take, toArray, Subscription as RxjsSubscription, Observable } from "rxjs";
+import { firstValueFrom, take, toArray, Subscription as RxjsSubscription, Observable, Subject, shareReplay } from "rxjs";
 import { NostrToolsPubkeySource } from "../../../../../src/infra/sources/nostr-tools/adapters/NostrToolsPubkeySource.js";
 import { IEvent } from "../../../../../src/core/data/IEvent.js";
 import { IEventBusPort } from "../../../../../src/core/eventing/ports/event-bus/IEventBusPort.js";
 import { PubkeySourceErrorEvent } from "../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js";
 import { PubkeyFoundEvent } from "../../../../../src/core/recorders/pubkey/eventing/events/PubkeyFoundEvent.js";
 import { isPubkeySourceErrorEvent } from "../../../../../src/core/scanners/pubkey/eventing/type-guards/isPubkeySourceErrorEvent.js";
+import { isPubkeySourceNotificationEvent } from "../../../../../src/core/scanners/pubkey/eventing/type-guards/isPubkeySourceNotificationEvent.js";
 import { bimap, Either, isRight, map, right, sequenceArray } from "fp-ts/lib/Either.js";
 import { Subscription } from "nostr-tools/lib/types/abstract-relay";
+import { IDomainEvent } from "../../../../../src/core/eventing/events/IDomainEvent.js";
+import { IDomainEventData } from "../../../../../src/core/eventing/data/IDomainEventData.js";
 
 type SubscriptionCallbacks = {
     onevent?: (event: IEvent) => void;
@@ -29,11 +31,33 @@ interface SubscriptionInstance {
     url: string;
 }
 
+interface IExtendedEventBusPort extends IEventBusPort {
+    events: Array<IDomainEvent<IDomainEventData>>;
+}
+
+function createEventBus(): IExtendedEventBusPort {
+    const eventSubject = new Subject<IDomainEvent<IDomainEventData>>();
+    const events: Array<IDomainEvent<IDomainEventData>> = [];
+
+    const eventBus: IExtendedEventBusPort = {
+        events: events,
+        events$: eventSubject.asObservable().pipe(shareReplay()),
+        publish: (e) => { eventSubject.next(e); events.push(e); },
+    };
+
+    return eventBus;
+}
+
+let eventBus: IExtendedEventBusPort;
+
+beforeEach(() => {
+    eventBus = createEventBus();
+});
+
 describe('NostrToolsPubkeySource', () => {
     describe('constructor()', () => {
         it('initializes properties', () => {
             const RELAY_URLS = ['ws://localhost:12345', 'ws://localhost:23456'];
-            const eventBus = mock<IEventBusPort>();
             const retryDelay = 1234;
 
             const source = new NostrToolsPubkeySource({ eventBus, retryDelay, relayURLs: RELAY_URLS });
@@ -46,8 +70,7 @@ describe('NostrToolsPubkeySource', () => {
     
     describe('start()', () => {
         it('creates an RxJS Observable', () => {
-            const eventBus = mock<IEventBusPort>();
-            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: ['wss://relay1.com'] });
+            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: ['ws://localhost:12345'] });
             const obs = source.start({ filters: [] });
 
             expect(obs).toBeInstanceOf(Observable);
@@ -67,7 +90,6 @@ describe('NostrToolsPubkeySource', () => {
                 const RELAY_URL2 = `ws://localhost:${String(PORT2)}`;
                 const server1 = new WebSocketServer({ port: PORT1 });
                 const server2 = new WebSocketServer({ port: PORT2 });
-                const eventBus = mock<IEventBusPort>();
                 let server1Connections = 0;
                 let server2Connections = 0;
 
@@ -83,16 +105,55 @@ describe('NostrToolsPubkeySource', () => {
 
                 subscription = source.start({ filters: [] }).subscribe();
 
-                await new Promise(res => setTimeout(res, 100));
-
-                source.stop();
-
-                await new Promise(res => setTimeout(res, 100));
+                await new Promise(res => setTimeout(res, 200));
 
                 expect(server1Connections).toEqual(1);
                 expect(server2Connections).toEqual(1);
 
-                source.stop();
+                server1.close();
+                server2.close();
+            });
+
+            it('it publishes a notification of each connection attempt', async () => {
+                const PORT1 = 8095;
+                const PORT2 = 8096;
+                const RELAY_URL1 = `ws://localhost:${String(PORT1)}`;
+                const RELAY_URL2 = `ws://localhost:${String(PORT2)}`;
+                const server1 = new WebSocketServer({ port: PORT1 });
+                const server2 = new WebSocketServer({ port: PORT2 });
+                const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL1, RELAY_URL2] });
+
+                subscription = source.start({ filters: [] }).subscribe();
+
+                await new Promise(res => setTimeout(res, 100));
+
+                const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+
+                expect(notificationEvents.filter(e => e.message === `Connecting to ${RELAY_URL1}`)).toHaveLength(1);
+                expect(notificationEvents.filter(e => e.message === `Connecting to ${RELAY_URL2}`)).toHaveLength(1);
+
+                server1.close();
+                server2.close();
+            });
+
+            it('it publishes a notification of each successful connection', async () => {
+                const PORT1 = 8095;
+                const PORT2 = 8096;
+                const RELAY_URL1 = `ws://localhost:${String(PORT1)}`;
+                const RELAY_URL2 = `ws://localhost:${String(PORT2)}`;
+                const server1 = new WebSocketServer({ port: PORT1 });
+                const server2 = new WebSocketServer({ port: PORT2 });
+                const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL1, RELAY_URL2] });
+
+                subscription = source.start({ filters: [] }).subscribe();
+
+                await new Promise(res => setTimeout(res, 100));
+
+                const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+
+                expect(notificationEvents.filter(e => e.message === `Connected to ${RELAY_URL1}`)).toHaveLength(1);
+                expect(notificationEvents.filter(e => e.message === `Connected to ${RELAY_URL2}`)).toHaveLength(1);
+
                 server1.close();
                 server2.close();
             });
@@ -102,7 +163,6 @@ describe('NostrToolsPubkeySource', () => {
                 const PORT2 = 8296;
                 const RELAY_URL1 = `ws://localhost:${String(PORT1)}`;
                 const RELAY_URL2 = `ws://localhost:${String(PORT2)}`;
-                const eventBus = mock<IEventBusPort>();
                 const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL1, RELAY_URL2], retryDelay: 0 });
                 const subscriptions: Array<unknown[]> = [];
                 const expectedSubscriptions = [
@@ -144,17 +204,37 @@ describe('NostrToolsPubkeySource', () => {
 
                 expect(subscriptions).toStrictEqual(expectedSubscriptions);
 
-                source.stop();
+                server1.close();
+                server2.close();
+            });
+
+            it('it publishes a notification of each subscription', async () => {
+                const PORT1 = 8095;
+                const PORT2 = 8096;
+                const RELAY_URL1 = `ws://localhost:${String(PORT1)}`;
+                const RELAY_URL2 = `ws://localhost:${String(PORT2)}`;
+                const server1 = new WebSocketServer({ port: PORT1 });
+                const server2 = new WebSocketServer({ port: PORT2 });
+                const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL1, RELAY_URL2] });
+
+                subscription = source.start({ filters: [] }).subscribe();
+
+                await new Promise(res => setTimeout(res, 100));
+
+                const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+
+                expect(notificationEvents.filter(e => e.message === `Subscribing to ${RELAY_URL1}/`)).toHaveLength(1);
+                expect(notificationEvents.filter(e => e.message === `Subscribing to ${RELAY_URL2}/`)).toHaveLength(1);
+
                 server1.close();
                 server2.close();
             });
 
             describe('and a Nostr subscription is active', () => {
                 it('it receives Nostr events and returns their pubkeys', async () => {
-                    const RELAY_URLS = ['wss://relay1.com', 'wss://relay2.com'];
+                    const RELAY_URLS = ['ws://localhost:12345', 'ws://localhost:12346'];
                     const PUBKEYS_FROM_RELAY1 = ['pubkey1', 'pubkey2'];
                     const PUBKEYS_FROM_RELAY2 = ['pubkey3'];
-                    const eventBus = mock<IEventBusPort>();
 
                     const eventsFromRelay1 = PUBKEYS_FROM_RELAY1.map(
                         pk => ({ pubkey: pk } as unknown as IEvent),
@@ -169,7 +249,7 @@ describe('NostrToolsPubkeySource', () => {
                         callbacks: SubscriptionCallbacks,
                     ): Subscription {
                         const url: string = (this as SubscriptionInstance).url;
-                        const events = url.includes('relay1.com') ? eventsFromRelay1 : url.includes('relay2.com') ? eventsFromRelay2 : [];
+                        const events = url.includes('ws://localhost:12345') ? eventsFromRelay1 : url.includes('ws://localhost:12346') ? eventsFromRelay2 : [];
 
                         // emit events asynchronously
                         setTimeout(() => {
@@ -213,60 +293,161 @@ describe('NostrToolsPubkeySource', () => {
                         [...PUBKEYS_FROM_RELAY1, ...PUBKEYS_FROM_RELAY2].sort()
                     ));
 
-                    source.stop();
                 });
+            });
 
-                describe('and the relay connection unexpectedly closes', () => {
-                    it('it attempts to reconnect after a configurable delay', async() => {
-                        const RELAY_URL = 'wss://relay-error.com';
-                        const eventBus = mock<IEventBusPort>();
-                        let connectionAttempts = 0;
 
-                        const connectSpy = vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
-                            connectionAttempts++;
+            describe('and a relay connection unexpectedly closes', () => {
+                it('it publishes an error', async() => {
+                    const RELAY_URL = 'ws://localhost:12345';
+                    
+                    let connectionAttempts = 0;
 
-                            if (connectionAttempts === 1) {
-                                setTimeout(() => {
-                                    this.onclose?.(); // eslint-disable-line
-                                }, 100);
-                            }
+                    const connectSpy = vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                        connectionAttempts++;
 
-                            // create the promise so relay.send() considers the connection open
-                            this.connectionPromise = Promise.resolve(); // eslint-disable-line
-                            this._connected = true; // eslint-disable-line
+                        if (connectionAttempts === 1) {
+                            setTimeout(() => {
+                                this.onclose?.(); // eslint-disable-line
+                            }, 100);
+                        }
 
-                            return this.connectionPromise as Promise<void>; // eslint-disable-line
-                        });
+                        // create the promise so relay.send() considers the connection open
+                        this.connectionPromise = Promise.resolve(); // eslint-disable-line
+                        this._connected = true; // eslint-disable-line
 
-                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 20 });
-
-                        subscription = source.start({ filters: [] }).subscribe();
-
-                        await new Promise((res) => setTimeout(res, 50));
-
-                        expect(connectionAttempts).toEqual(1);
-
-                        await new Promise((res) => setTimeout(res, 100));
-
-                        expect(connectionAttempts).toEqual(2);
-                        expect(connectSpy).toHaveBeenCalledTimes(2);
-
-                        source.stop();
+                        return this.connectionPromise as Promise<void>; // eslint-disable-line
                     });
 
-                    it('it publishes an error event', async() => {
-                        const RELAY_URL = 'wss://relay-error.com';
-                        const eventBus = mock<IEventBusPort>();
-                        const publishSpy = eventBus.publish; // eslint-disable-line
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 20 });
 
+                    subscription = source.start({ filters: [] }).subscribe();
+
+                    await new Promise((res) => setTimeout(res, 150));
+
+                    const errorEvents = eventBus.events.filter(isPubkeySourceErrorEvent);
+
+                    expect(connectionAttempts).toEqual(2);
+                    expect(connectSpy).toHaveBeenCalledTimes(2);
+                    expect(errorEvents).toHaveLength(1);
+                    expect(errorEvents.some(e => e.message == `Disconnected from ${RELAY_URL} because: ${RELAY_URL} returned an error or closed the connection`)).toBeTruthy();
+
+                });
+
+                it('it closes any subscription and publishes a notification', async() => {
+                    const RELAY_URL = 'ws://localhost:12345';
+                    let connectionAttempts = 0;
+
+                    vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                        connectionAttempts++;
+
+                        if (connectionAttempts === 1) {
+                            setTimeout(() => {
+                                this.onclose?.(); // eslint-disable-line
+                                this.closeAllSubscriptions('relay connection errored'); // eslint-disable-line
+                            }, 100);
+                        }
+
+                        // create the promise so relay.send() considers the connection open
+                        this.connectionPromise = Promise.resolve(); // eslint-disable-line
+                        this._connected = true; // eslint-disable-line
+
+                        return this.connectionPromise as Promise<void>; // eslint-disable-line
+                    });
+
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 20 });
+
+                    subscription = source.start({ filters: [] }).subscribe();
+
+                    await new Promise((res) => setTimeout(res, 150));
+
+                    const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+
+                    expect(notificationEvents.filter(e => e.message === `Unsubscribed from ${RELAY_URL}/`)).toHaveLength(1);
+                });
+
+                it('it attempts to reconnect after a configurable delay', async() => {
+                    const RELAY_URL = 'ws://localhost:12345';
+                    let connectionAttempts = 0;
+
+                    const connectSpy = vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                        connectionAttempts++;
+
+                        if (connectionAttempts === 1) {
+                            setTimeout(() => {
+                                this.onclose?.(); // eslint-disable-line
+                                this.closeAllSubscriptions('relay connection errored'); // eslint-disable-line
+                            }, 100);
+                        }
+
+                        // create the promise so relay.send() considers the connection open
+                        this.connectionPromise = Promise.resolve(); // eslint-disable-line
+                        this._connected = true; // eslint-disable-line
+
+                        return this.connectionPromise as Promise<void>; // eslint-disable-line
+                    });
+
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 20 });
+
+                    subscription = source.start({ filters: [] }).subscribe();
+
+                    await new Promise((res) => setTimeout(res, 50));
+
+                    expect(connectionAttempts).toEqual(1);
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    expect(connectionAttempts).toEqual(2);
+                    expect(connectSpy).toHaveBeenCalledTimes(2);
+
+                });
+
+                it('it publishes a notification of the reconnection attempt', async() => {
+                    const RELAY_URL = 'ws://localhost:12345';
+                    let connectionAttempts = 0;
+
+                    vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                        connectionAttempts++;
+
+                        if (connectionAttempts === 1) {
+                            setTimeout(() => {
+                                this.onclose?.(); // eslint-disable-line
+                                this.closeAllSubscriptions('relay connection errored'); // eslint-disable-line
+                            }, 100);
+                        }
+
+                        // create the promise so relay.send() considers the connection open
+                        this.connectionPromise = Promise.resolve(); // eslint-disable-line
+                        this._connected = true; // eslint-disable-line
+
+                        return this.connectionPromise as Promise<void>; // eslint-disable-line
+                    });
+
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 20 });
+
+                    subscription = source.start({ filters: [] }).subscribe();
+
+                    await new Promise((res) => setTimeout(res, 150));
+
+                    const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+
+                    expect(notificationEvents.filter(e => e.message === `Connecting to ${RELAY_URL}`)).toHaveLength(2);
+                    expect(notificationEvents.filter(e => e.message === `Connecting to ${RELAY_URL}`)).toHaveLength(2);
+
+                });
+
+                describe('and it reconnects', () => {
+                    it('it publishes a notification', async() => {
+                        const RELAY_URL = 'ws://localhost:12345';
                         let connectionAttempts = 0;
 
-                        const connectSpy = vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                        vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
                             connectionAttempts++;
 
                             if (connectionAttempts === 1) {
                                 setTimeout(() => {
                                     this.onclose?.(); // eslint-disable-line
+                                    this.closeAllSubscriptions('relay connection errored'); // eslint-disable-line
                                 }, 100);
                             }
 
@@ -283,209 +464,296 @@ describe('NostrToolsPubkeySource', () => {
 
                         await new Promise((res) => setTimeout(res, 150));
 
-                        const errorEvents = publishSpy.mock.calls.filter(arr => isPubkeySourceErrorEvent(arr[0]));
+                        const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
 
-                        expect(connectionAttempts).toEqual(2);
-                        expect(connectSpy).toHaveBeenCalledTimes(2);
-                        expect(errorEvents.length).toEqual(1);
+                        expect(notificationEvents.filter(e => e.message === `Connected to ${RELAY_URL}`)).toHaveLength(2);
+                        expect(notificationEvents.filter(e => e.message === `Connected to ${RELAY_URL}`)).toHaveLength(2);
 
-                        source.stop();
+                    });
+
+
+
+                    it('it resubscribes to the connection and publishes a notification', async() => {
+                        const RELAY_URL = 'ws://localhost:12345';
+                        let connectionAttempts = 0;
+
+                        vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                            connectionAttempts++;
+
+                            if (connectionAttempts === 1) {
+                                setTimeout(() => {
+                                    this.onclose?.(); // eslint-disable-line
+                                    this.closeAllSubscriptions('relay connection errored'); // eslint-disable-line
+                                }, 100);
+                            }
+
+                            // create the promise so relay.send() considers the connection open
+                            this.connectionPromise = Promise.resolve(); // eslint-disable-line
+                            this._connected = true; // eslint-disable-line
+
+                            return this.connectionPromise as Promise<void>; // eslint-disable-line
+                        });
+
+                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 20 });
+
+                        subscription = source.start({ filters: [] }).subscribe();
+
+                        await new Promise((res) => setTimeout(res, 150));
+
+                        const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+                        const subscriptionEvents = notificationEvents.filter(e => e.message === `Subscribing to ${RELAY_URL}/`);
+
+                        expect(subscriptionEvents).toHaveLength(2);
+
                     });
                 });
+            });
 
-                describe('and the relay closes the Nostr subscription', () => {
-                    it('it attempts to resubscribe after a configurable delay', async() => {
-                        const PORT = 8093;
-                        const RELAY_URL = `ws://localhost:${String(PORT)}`;
-                        const eventBus = mock<IEventBusPort>();
-                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 50 });
-                        const subscriptions: Array<unknown[]> = [];
-                        const expectedSubscriptions = [
-                            [ 'REQ', 'sub:1', { kinds: [ 1 ] } ],
-                            [ 'REQ', 'sub:2', { kinds: [ 1 ] } ],
-                            [ 'REQ', 'sub:3', { kinds: [ 1 ] } ],
-                        ];
+            describe('and a relay closes a Nostr subscription', () => {
+                it('it publishes an error event', async() => {
+                    const PORT = 8099;
+                    const RELAY_URL = `ws://localhost:${String(PORT)}`;
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 50 });
 
-                        const server = new WebSocketServer({ port: PORT });
+                    const server = new WebSocketServer({ port: PORT });
 
-                        server.on('connection', function connection(ws) {
-                            ws.on('error', console.error);
+                    server.on('connection', function connection(ws) {
+                        ws.on('error', console.error);
 
-                            ws.on('message', function message(data, isBinary) {
-                                const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
-                                const message = JSON.parse(text) as Array<unknown>;
+                        ws.on('message', function message(data, isBinary) {
+                            const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
+                            const message = JSON.parse(text) as Array<string>;
 
-                                subscriptions.push(message);
-
-                                ws.send(JSON.stringify(["CLOSED", message[1], 'closed by meeeee!']));
-                            });
+                            ws.send(JSON.stringify(["CLOSED", message[1], 'closed by meeeee!']));
                         });
-
-                        subscription = source.start({ filters: [ { kinds: [1] } ] }).subscribe();
-
-                        await new Promise((res) => setTimeout(res, 120));
-
-                        expect(subscriptions).toStrictEqual(expectedSubscriptions);
-
-                        source.stop();
-                        server.close();
                     });
 
-                    it('it publishes an error event', async() => {
-                        const PORT = 8099;
-                        const RELAY_URL = `ws://localhost:${String(PORT)}`;
-                        const eventBus = mock<IEventBusPort>();
-                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 50 });
-                        const publishSpy = eventBus.publish; // eslint-disable-line
+                    subscription = source.start({ filters: [ { kinds: [1] } ] }).subscribe();
 
-                        const server = new WebSocketServer({ port: PORT });
+                    await new Promise((res) => setTimeout(res, 120));
 
-                        server.on('connection', function connection(ws) {
-                            ws.on('error', console.error);
+                    const errorEvents = eventBus.events.filter(isPubkeySourceErrorEvent);
 
-                            ws.on('message', function message(data, isBinary) {
-                                const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
-                                const message = JSON.parse(text) as Array<string>;
+                    expect(errorEvents).toHaveLength(3);
+                    expect(errorEvents.filter(e => e.message === 'Unsubscribed from ws://localhost:8099/ because: ws://localhost:8099/ closed the subscription')).toHaveLength(3);
 
-                                ws.send(JSON.stringify(["CLOSED", message[1], 'closed by meeeee!']));
-                            });
-                        });
-
-                        subscription = source.start({ filters: [ { kinds: [1] } ] }).subscribe();
-
-                        await new Promise((res) => setTimeout(res, 120));
-
-                        const errorEvents = publishSpy.mock.calls.filter(arr => isPubkeySourceErrorEvent(arr[0]));
-
-                        expect(errorEvents.length).toEqual(3);
-
-                        source.stop();
-                        server.close();
-                    });
+                    server.close();
                 });
 
-                describe("and some subscribers unsubscribe", () => {
-                    it('it keeps the Nostr subscription open', async() => {
-                        const PORT = 8293;
-                        const RELAY_URL = `ws://localhost:${String(PORT)}`;
-                        const eventBus = mock<IEventBusPort>();
-                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
-                        const subscriptions: Array<unknown[]> = [];
-                        const expectedSubscriptions = [
-                            [ 'REQ', 'sub:1', { kinds: [1] } ]
-                        ];
+                it('it resubscribes after a configurable delay', async() => {
+                    const PORT = 8093;
+                    const RELAY_URL = `ws://localhost:${String(PORT)}`;
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 50 });
+                    const subscriptions: Array<unknown[]> = [];
+                    const expectedSubscriptions = [
+                        [ 'REQ', 'sub:1', { kinds: [ 1 ] } ],
+                        [ 'REQ', 'sub:2', { kinds: [ 1 ] } ],
+                        [ 'REQ', 'sub:3', { kinds: [ 1 ] } ],
+                    ];
 
-                        const server = new WebSocketServer({ port: PORT });
+                    const server = new WebSocketServer({ port: PORT });
 
-                        server.on('connection', function connection(ws) {
-                            ws.on('error', console.error);
+                    server.on('connection', function connection(ws) {
+                        ws.on('error', console.error);
 
-                            ws.on('message', function message(data, isBinary) {
-                                const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
-                                const message = JSON.parse(text) as Array<unknown>;
+                        ws.on('message', function message(data, isBinary) {
+                            const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
+                            const message = JSON.parse(text) as Array<unknown>;
 
-                                subscriptions.push(message);
-                            });
+                            subscriptions.push(message);
+
+                            ws.send(JSON.stringify(["CLOSED", message[1], 'closed by meeeee!']));
                         });
-
-                        const obs = source.start({ filters: [ { kinds: [1] } ] });
-                        //const obs2 = source.start({ filters: [ { kinds: [1] } ] });
-                        //
-                        //obs2.subscribe();
-
-                        const subscription3 = obs.subscribe();
-                        obs.subscribe();
-
-                        await new Promise((res) => setTimeout(res, 100));
-
-                        subscription3.unsubscribe();
-
-                        await new Promise((res) => setTimeout(res, 100));
-
-                        expect(subscriptions).toStrictEqual(expectedSubscriptions);
-
-                        source.stop();
-                        server.close();
                     });
+
+                    subscription = source.start({ filters: [ { kinds: [1] } ] }).subscribe();
+
+                    await new Promise((res) => setTimeout(res, 120));
+
+                    expect(subscriptions).toStrictEqual(expectedSubscriptions);
+
+                    server.close();
                 });
 
-                describe("and all subscribers unsubscribe", () => {
-                    it('it closes the Nostr subscription', async() => {
-                        const PORT = 8293;
-                        const RELAY_URL = `ws://localhost:${String(PORT)}`;
-                        const eventBus = mock<IEventBusPort>();
-                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
-                        const subscriptions: Array<unknown[]> = [];
+                it('it publishes a notification of a resubscription', async() => {
+                    const PORT = 8093;
+                    const RELAY_URL = `ws://localhost:${String(PORT)}`;
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 50 });
+                    const subscriptions: Array<unknown[]> = [];
+                    const server = new WebSocketServer({ port: PORT });
 
-                        const expectedSubscriptions = [
-                            [ 'REQ', 'sub:1', { kinds: [1] } ],
-                            [ 'CLOSE', 'sub:1' ]
-                        ];
+                    server.on('connection', function connection(ws) {
+                        ws.on('error', console.error);
 
-                        const server = new WebSocketServer({ port: PORT });
+                        ws.on('message', function message(data, isBinary) {
+                            const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
+                            const message = JSON.parse(text) as Array<unknown>;
 
-                        server.on('connection', function connection(ws) {
-                            ws.on('error', console.error);
+                            subscriptions.push(message);
 
-                            ws.on('message', function message(data, isBinary) {
-                                const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
-                                const message = JSON.parse(text) as Array<unknown>;
-
-                                subscriptions.push(message);
-                            });
+                            ws.send(JSON.stringify(["CLOSED", message[1], 'closed by meeeee!']));
                         });
-
-                        const obs = source.start({ filters: [ { kinds: [1] } ] });
-                        const subscription3 = obs.subscribe();
-                        const subscription4 = obs.subscribe();
-
-                        await new Promise((res) => setTimeout(res, 100));
-
-                        subscription3.unsubscribe();
-                        subscription4.unsubscribe();
-
-                        await new Promise((res) => setTimeout(res, 100));
-
-                        expect(subscriptions).toStrictEqual(expectedSubscriptions);
-
-                        source.stop();
-                        server.close();
                     });
 
-                    it('it closes the relay connection', async() => {
-                        const PORT = 8293;
-                        const RELAY_URL = `ws://localhost:${String(PORT)}`;
-                        const eventBus = mock<IEventBusPort>();
-                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
-                        const closedConnectionPorts: Array<number> = [];
-                        const server = new WebSocketServer({ port: PORT });
+                    subscription = source.start({ filters: [ { kinds: [1] } ] }).subscribe();
 
-                        server.on('connection', function connection(ws) {
-                            ws.on('error', console.error);
+                    await new Promise((res) => setTimeout(res, 120));
 
-                            ws.on('close', () => {
-                                if (this.options.port !== undefined) {
-                                    closedConnectionPorts.push(this.options.port);
-                                }
-                            });
+                    const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+                    const subscriptionEvents = notificationEvents.filter(e => e.message === `Subscribing to ${RELAY_URL}/`);
+
+                    expect(subscriptionEvents).toHaveLength(3);
+
+                    server.close();
+                });
+            });
+
+            describe("and all subscribers unsubscribe", () => {
+                it('it closes any Nostr subscription', async() => {
+                    const PORT = 8293;
+                    const RELAY_URL = `ws://localhost:${String(PORT)}`;
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
+                    const subscriptions: Array<unknown[]> = [];
+
+                    const expectedSubscriptions = [
+                        [ 'REQ', 'sub:1', { kinds: [1] } ],
+                        [ 'CLOSE', 'sub:1' ]
+                    ];
+
+                    const server = new WebSocketServer({ port: PORT });
+
+                    server.on('connection', function connection(ws) {
+                        ws.on('error', console.error);
+
+                        ws.on('message', function message(data, isBinary) {
+                            const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
+                            const message = JSON.parse(text) as Array<unknown>;
+
+                            subscriptions.push(message);
                         });
-
-                        const obs = source.start({ filters: [ { kinds: [1] } ] });
-                        const subscription3 = obs.subscribe();
-                        const subscription4 = obs.subscribe();
-
-                        await new Promise((res) => setTimeout(res, 100));
-
-                        subscription3.unsubscribe();
-                        subscription4.unsubscribe();
-
-                        await new Promise((res) => setTimeout(res, 100));
-
-                        expect(closedConnectionPorts).toStrictEqual([PORT]);
-
-                        source.stop();
-                        server.close();
                     });
+
+                    const obs = source.start({ filters: [ { kinds: [1] } ] });
+                    const subscription3 = obs.subscribe();
+                    const subscription4 = obs.subscribe();
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    subscription3.unsubscribe();
+                    subscription4.unsubscribe();
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    expect(subscriptions).toStrictEqual(expectedSubscriptions);
+
+                    server.close();
+                });
+
+                it('it closes any relay connection', async() => {
+                    const PORT = 8293;
+                    const RELAY_URL = `ws://localhost:${String(PORT)}`;
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
+                    const closedConnectionPorts: Array<number> = [];
+                    const server = new WebSocketServer({ port: PORT });
+
+                    server.on('connection', function connection(ws) {
+                        ws.on('error', console.error);
+
+                        ws.on('close', () => {
+                            if (this.options.port !== undefined) {
+                                closedConnectionPorts.push(this.options.port);
+                            }
+                        });
+                    });
+
+                    const obs = source.start({ filters: [ { kinds: [1] } ] });
+                    const subscription3 = obs.subscribe();
+                    const subscription4 = obs.subscribe();
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    subscription3.unsubscribe();
+                    subscription4.unsubscribe();
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    expect(closedConnectionPorts).toStrictEqual([PORT]);
+
+                    server.close();
+                });
+
+                it('it publishes a notification of any disconnection', async() => {
+                    const PORT = 8294;
+                    const RELAY_URL = `ws://localhost:${String(PORT)}`;
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
+                    const subscriptions: Array<unknown[]> = [];
+
+                    const server = new WebSocketServer({ port: PORT });
+
+                    server.on('connection', function connection(ws) {
+                        ws.on('error', console.error);
+
+                        ws.on('message', function message(data, isBinary) {
+                            const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
+                            const message = JSON.parse(text) as Array<unknown>;
+
+                            subscriptions.push(message);
+                        });
+                    });
+
+                    const obs = source.start({ filters: [ { kinds: [1] } ] });
+                    const subscription1 = obs.subscribe();
+                    const subscription2 = obs.subscribe();
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    subscription1.unsubscribe();
+                    subscription2.unsubscribe();
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+
+                    expect(notificationEvents.filter(e => e.message === `Disconnected from ${RELAY_URL}`)).toHaveLength(1);
+
+                    server.close();
+                });
+
+                it('it publishes a notification of any unsubscription', async() => {
+                    const PORT = 8294;
+                    const RELAY_URL = `ws://localhost:${String(PORT)}`;
+                    const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
+                    const subscriptions: Array<unknown[]> = [];
+
+                    const server = new WebSocketServer({ port: PORT });
+
+                    server.on('connection', function connection(ws) {
+                        ws.on('error', console.error);
+
+                        ws.on('message', function message(data, isBinary) {
+                            const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
+                            const message = JSON.parse(text) as Array<unknown>;
+
+                            subscriptions.push(message);
+                        });
+                    });
+
+                    const obs = source.start({ filters: [ { kinds: [1] } ] });
+                    const subscription1 = obs.subscribe();
+                    const subscription2 = obs.subscribe();
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    subscription1.unsubscribe();
+                    subscription2.unsubscribe();
+
+                    await new Promise((res) => setTimeout(res, 100));
+
+                    const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+
+                    expect(notificationEvents.filter(e => e.message === `Unsubscribed from ${RELAY_URL}/`)).toHaveLength(1);
+
+                    server.close();
                 });
             });
 
@@ -495,7 +763,6 @@ describe('NostrToolsPubkeySource', () => {
                         const PORT = 8093;
                         const RELAY_URL = `ws://localhost:${String(PORT)}`;
                         const connectSpy = vi.spyOn(Relay.prototype, 'connect');
-                        const eventBus = mock<IEventBusPort>();
                         let connectionAttempts = 0;
 
                         const server = new WebSocketServer({
@@ -515,7 +782,6 @@ describe('NostrToolsPubkeySource', () => {
                         expect(connectionAttempts).toEqual(2);
                         expect(connectSpy).toHaveBeenCalledTimes(2);
 
-                        source.stop();
                         server.close();
                     });
                 });
@@ -525,7 +791,6 @@ describe('NostrToolsPubkeySource', () => {
                         const PORT = 8093;
                         const RELAY_URL = `ws://localhost:${String(PORT)}`;
                         const connectSpy = vi.spyOn(Relay.prototype, 'connect');
-                        const eventBus = mock<IEventBusPort>();
                         let connectionAttempts = 0;
 
                         const server = new WebSocketServer({
@@ -547,21 +812,17 @@ describe('NostrToolsPubkeySource', () => {
                         expect(connectionAttempts).toEqual(2);
                         expect(connectSpy).toHaveBeenCalledTimes(2);
 
-                        source.stop();
                         server.close();
                     });
                 });
 
                 describe('it always', () => {
                     it('publishes an error event', async () => {
-                        const RELAY_URLS = ['wss://localhost:12345'];
-                        const eventBus = mock<IEventBusPort>();
-                        // eslint-disable-next-line @typescript-eslint/unbound-method
-                        const publishSpy = eventBus.publish;
+                        const RELAY_URL = 'ws://localhost:12345';
 
                         vi.spyOn(Relay.prototype, 'connect').mockImplementation(() => Promise.reject(new Error('connection rejected')));
 
-                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS, retryDelay: 10000 });
+                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 10000 });
 
                         subscription = source.start({ filters: [] }).subscribe({
                             error: () => {},
@@ -569,15 +830,15 @@ describe('NostrToolsPubkeySource', () => {
 
                         await new Promise(res => setTimeout(res, 0));
 
-                        expect(publishSpy).toHaveBeenCalledTimes(2);
-                        expect(publishSpy.mock.calls[1][0]).toBeInstanceOf(PubkeySourceErrorEvent);
+                        const errorEvents = eventBus.events.filter(isPubkeySourceErrorEvent);
 
-                        source.stop();
+                        expect(errorEvents).toHaveLength(1);
+                        expect(errorEvents.filter(e => e.message === `Disconnected from ${RELAY_URL} because: Failed to connect to ${RELAY_URL}: connection rejected`)).toHaveLength(1);
+
                     });
 
                     it('waits for a configurable delay before attempting to reconnect', async() => {
-                        const RELAY_URLS = ['wss://localhost:12345'];
-                        const eventBus = mock<IEventBusPort>();
+                        const RELAY_URLS = ['ws://localhost:12345'];
                         const connectionSpy = vi.spyOn(Relay.prototype, 'connect').mockImplementation(() => Promise.reject(new Error('connection rejected')));
                         const source1 = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS, retryDelay: 80 });
                         const source2 = new NostrToolsPubkeySource({ eventBus, relayURLs: RELAY_URLS, retryDelay: 110 });
@@ -598,8 +859,104 @@ describe('NostrToolsPubkeySource', () => {
 
                         expect(connectionSpy).toHaveBeenCalledTimes(4);
 
-                        source1.stop();
-                        source2.stop();
+                    });
+
+                    it('publishes a notification of the reconnection attempt', async() => {
+                        const RELAY_URL = 'ws://localhost:12345';
+                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 80 });
+
+                        let connectionAttempts = 0;
+
+                        vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                            connectionAttempts++;
+
+                            if (connectionAttempts === 1) {
+                                this.connectionPromise = Promise.reject(new Error('connection rejected')); // eslint-disable-line
+                                this._connected = false; // eslint-disable-line
+                            } else {
+                                this.connectionPromise = Promise.resolve(); // eslint-disable-line
+                                this._connected = true; // eslint-disable-line
+                            }
+
+                            return this.connectionPromise as Promise<void>; // eslint-disable-line
+                        });
+
+                        subscription = source.start({ filters: [] }).subscribe({
+                            error: () => {},
+                        });
+
+                        await new Promise(res => setTimeout(res, 100));
+
+                        const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+                        const connectingEvents = notificationEvents.filter(e => e.message === `Connecting to ${RELAY_URL}`);
+
+                        expect (connectingEvents).toHaveLength(2);
+                    });
+
+                    describe('after connecting', () => {
+                        it('publishes a notification of reconnection', async() => {
+                            const RELAY_URL = 'ws://localhost:12345';
+                            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 80 });
+
+                            let connectionAttempts = 0;
+
+                            vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                                connectionAttempts++;
+
+                                if (connectionAttempts === 1) {
+                                    this.connectionPromise = Promise.reject(new Error('connection rejected')); // eslint-disable-line
+                                    this._connected = false; // eslint-disable-line
+                                } else {
+                                    this.connectionPromise = Promise.resolve(); // eslint-disable-line
+                                    this._connected = true; // eslint-disable-line
+                                }
+
+                                return this.connectionPromise as Promise<void>; // eslint-disable-line
+                            });
+
+                            subscription = source.start({ filters: [] }).subscribe({
+                                error: () => {},
+                            });
+
+                            await new Promise(res => setTimeout(res, 100));
+
+                            const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+                            const connectedEvents = notificationEvents.filter(e => e.message === `Connected to ${RELAY_URL}`);
+
+                            expect (connectedEvents).toHaveLength(1);
+                        });
+
+                        it('creates a Nostr subscription and publishes a notification', async () => {
+                            const RELAY_URL = 'ws://localhost:12345';
+                            const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 80 });
+
+                            let connectionAttempts = 0;
+
+                            vi.spyOn(Relay.prototype, 'connect').mockImplementation(function (): Promise<void> {
+                                connectionAttempts++;
+
+                                if (connectionAttempts === 1) {
+                                    this.connectionPromise = Promise.reject(new Error('connection rejected')); // eslint-disable-line
+                                    this._connected = false; // eslint-disable-line
+                                } else {
+                                    this.connectionPromise = Promise.resolve(); // eslint-disable-line
+                                    this._connected = true; // eslint-disable-line
+                                }
+
+                                return this.connectionPromise as Promise<void>; // eslint-disable-line
+                            });
+
+                            subscription = source.start({ filters: [] }).subscribe({
+                                error: () => {},
+                            });
+
+                            await new Promise(res => setTimeout(res, 100));
+
+                            const notificationEvents = eventBus.events.filter(isPubkeySourceNotificationEvent);
+                            const connectingEvents = notificationEvents.filter(e => e.message === `Subscribing to ${RELAY_URL}/`);
+
+                            expect (connectingEvents).toHaveLength(1);
+                        });
                     });
                 });
             });
@@ -608,7 +965,6 @@ describe('NostrToolsPubkeySource', () => {
                 it('it maintains a single connection per relay', async() => {
                     const PORT = 8293;
                     const RELAY_URL = `ws://localhost:${String(PORT)}`;
-                    const eventBus = mock<IEventBusPort>();
                     const server = new WebSocketServer({ port: PORT });
                     const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
                     const obs = source.start({ filters: [ { kinds: [1] } ] });
@@ -620,14 +976,12 @@ describe('NostrToolsPubkeySource', () => {
 
                     expect(server.clients.size).toEqual(1);
 
-                    source.stop();
                     server.close();
                 });
 
                 it('it maintains a single Nostr subscription to each connected relay', async() => {
                     const PORT = 8293;
                     const RELAY_URL = `ws://localhost:${String(PORT)}`;
-                    const eventBus = mock<IEventBusPort>();
                     const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
                     const subscriptions: Array<unknown[]> = [];
                     const expectedSubscriptions = [
@@ -656,15 +1010,13 @@ describe('NostrToolsPubkeySource', () => {
 
                     expect(subscriptions).toStrictEqual(expectedSubscriptions);
 
-                    source.stop();
                     server.close();
                 });
 
                 it('it shares Nostr events among all subscriptions', async () => {
-                    const RELAY_URLS = ['wss://relay1.com', 'wss://relay2.com'];
+                    const RELAY_URLS = ['ws://localhost:12345', 'ws://localhost:12346'];
                     const PUBKEYS_FROM_RELAY1 = ['pubkey1', 'pubkey2'];
                     const PUBKEYS_FROM_RELAY2 = ['pubkey3'];
-                    const eventBus = mock<IEventBusPort>();
                     const results1: Array<Either<PubkeySourceErrorEvent, PubkeyFoundEvent>> = [];
                     const results2: Array<Either<PubkeySourceErrorEvent, PubkeyFoundEvent>> = [];
 
@@ -681,7 +1033,7 @@ describe('NostrToolsPubkeySource', () => {
                         callbacks: SubscriptionCallbacks,
                     ): Subscription {
                         const url: string = (this as SubscriptionInstance).url;
-                        const events = url.includes('relay1.com') ? eventsFromRelay1 : url.includes('relay2.com') ? eventsFromRelay2 : [];
+                        const events = url.includes('ws://localhost:12345') ? eventsFromRelay1 : url.includes('ws://localhost:12346') ? eventsFromRelay2 : [];
 
                         // emit events asynchronously
                         setTimeout(() => {
@@ -746,8 +1098,45 @@ describe('NostrToolsPubkeySource', () => {
                     expect(foundPubkeys2).toStrictEqual(right(
                         [...PUBKEYS_FROM_RELAY1, ...PUBKEYS_FROM_RELAY2].sort()
                     ));
+                });
 
-                    source.stop();
+                describe("and some subscribers unsubscribe", () => {
+                    it('it keeps the Nostr subscription open', async() => {
+                        const PORT = 8293;
+                        const RELAY_URL = `ws://localhost:${String(PORT)}`;
+                        const source = new NostrToolsPubkeySource({ eventBus, relayURLs: [RELAY_URL], retryDelay: 0 });
+                        const subscriptions: Array<unknown[]> = [];
+                        const expectedSubscriptions = [
+                            [ 'REQ', 'sub:1', { kinds: [1] } ]
+                        ];
+
+                        const server = new WebSocketServer({ port: PORT });
+
+                        server.on('connection', function connection(ws) {
+                            ws.on('error', console.error);
+
+                            ws.on('message', function message(data, isBinary) {
+                                const text = isBinary ? Buffer.from(data as ArrayBuffer).toString() : (data as Buffer).toString();
+                                const message = JSON.parse(text) as Array<unknown>;
+
+                                subscriptions.push(message);
+                            });
+                        });
+
+                        const obs = source.start({ filters: [ { kinds: [1] } ] });
+                        const subscription3 = obs.subscribe();
+                        obs.subscribe();
+
+                        await new Promise((res) => setTimeout(res, 100));
+
+                        subscription3.unsubscribe();
+
+                        await new Promise((res) => setTimeout(res, 100));
+
+                        expect(subscriptions).toStrictEqual(expectedSubscriptions);
+
+                        server.close();
+                    });
                 });
             });
         });

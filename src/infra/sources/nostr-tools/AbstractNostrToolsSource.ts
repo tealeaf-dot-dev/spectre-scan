@@ -1,7 +1,7 @@
 import { Relay } from "nostr-tools";
 import { useWebSocketImplementation } from 'nostr-tools/relay';
 import WebSocket from 'ws';
-import { finalize, from, mergeMap, Observable, repeat, retry, Subscriber, Subject, takeUntil, map, share } from "rxjs";
+import { from, mergeMap, Observable, retry, Subscriber, map, share, tap } from "rxjs";
 import { RelayURL, RelayURLList } from "../data/types.js";
 import { INostrToolsSourceConfig } from "./interfaces/INostrToolsSourceConfig.js";
 import { IScannerSourcePort } from "../../../core/scanners/generic/ports/source/IScannerSourcePort.js";
@@ -25,7 +25,6 @@ export abstract class AbstractNostrToolsSource<
     SourceRequest extends IScannerSourcePortRequest,
     SourceResponse extends IScannerSourcePortResponse<ErrorEvent, SuccessEvent>
 > implements IScannerSourcePort<SourceRequest, SourceResponse> {
-    #stopSignal$ = new Subject<void>();
     #relayURLs: RelayURLList;
     #retryDelay: number;
     #connectionTimeoutDelay: number;
@@ -53,10 +52,6 @@ export abstract class AbstractNostrToolsSource<
         return this.#retryDelay;
     }
 
-    stop(): void {
-        this.#stopSignal$.next();
-    }
-
     protected publishEvent(evt: IDomainEvent<IDomainEventData>) {
         evt.setPublishedBy(this.constructor.name);
         this.eventBus.publish(evt);
@@ -69,8 +64,6 @@ export abstract class AbstractNostrToolsSource<
     #connectToRelay(relayURL: RelayURL): Observable<Relay> {
 
         return new Observable<Relay>(subscriber => {
-            this.publishNotification(`Connecting to ${relayURL}`);
-
             const relay = new Relay(relayURL);
 
             relay.connectionTimeout = this.#connectionTimeoutDelay;
@@ -79,40 +72,37 @@ export abstract class AbstractNostrToolsSource<
 
             connection
                 .then(_ => {
-                    this.publishNotification(`Connected to ${relayURL}`);
                     subscriber.next(relay);
                 })
                 .catch((error: unknown) => {
-                    this.publishError(`Failed to connect to ${relayURL}: ${stringifyError(error)}`);
-
-                    subscriber.error(
-                        error instanceof Error ? error : new Error(`Connection error: ${String(error)}`)
-                    );
+                    subscriber.error(`Failed to connect to ${relayURL}: ${stringifyError(error)}`);
                 });
 
             relay.onclose = () => {
-                const err = `${relayURL} returned an error or closed the connection`;
-                this.publishError(err);
-                subscriber.error(err);
+                subscriber.error(`${relayURL} returned an error or closed the connection`);
             };
 
             return () => {
-                setTimeout(() => {
-                    relay.close();
-                }, 50); // give a little delay to allow subscriptions to close before closing the connection
+                if (relay.connected) {
+                    setTimeout(() => {
+                        relay.close();
+                    }, 50); // give subscriptions time to close before closing the connection
+                }
             };
         });
     }
 
-    #subscribeToRelay(relay: Relay, filters: FiltersList): Observable<IEvent> {
-        this.publishNotification(`Subscribing to ${relay.url}`);
+    #weUnsubscribedMessage(relay: Relay): string {
 
-        const otherReasonsForClosing = [
+        return `${relay.url} subscription closed by us`;
+    }
+
+    #subscribeToRelay(relay: Relay, filters: FiltersList): Observable<IEvent> {
+        const relayConnectionClosedMessages = [
             'relay connection timed out',
             'relay connection errored',
             'relay connection closed',
             'relay connection closed by us',
-            `Unsubscribing from ${relay.url}`,
         ];
 
         return new Observable<IEvent>((subscriber: Subscriber<IEvent>) => {
@@ -121,26 +111,28 @@ export abstract class AbstractNostrToolsSource<
                     subscriber.next(event);
                 },
                 onclose: (reason: string) => {
-                    // when the relay closes the subscription by sending a 'CLOSED' event, we need to send an error signal to the subscriber which will then retry subscribing
-                    // under all other circumstances we need to complete the subscriber instead of erroring
-                    // so we need to distinguish between the case that the relay sends a 'CLOSED' event and the cases where onclose is called due to these other reasons:
-                    // a) the relay closing the websocket connection (which is handled by creating a new relay connection)
-                    // b) the subscription being closed by us
-                    // we do that by checking the reason given for closing against strings that are internal to nostr-tools and those provided by us
+                    // the subscription was closed because either:
+                    // a) the relay closed it by sending a 'CLOSED' event
+                    // b) the relay connection closed
+                    // c) we closed it
+                    // in case a) we need to send an error signal to the subscribe Observable so that it will resubscribe
+                    // in case b) the relay Observable will reconnect (unless we closed it) and trigger resubscription, so we just need to send a complete signal to the subscribe Observable
+                    // in case c) we do nothing
+                    // we determine case a-c) by comparing the reason given for closing against strings that are internal to nostr-tools and those provided by us
                     // which is icky but there's no alternative
 
-                    if (otherReasonsForClosing.includes(reason)) {
+                    if (relayConnectionClosedMessages.includes(reason)) {
                         subscriber.complete();
-                    } else {
-                        const err = `${relay.url} closed the subscription`;
-                        this.publishError(err);
-                        subscriber.error(err);
+                    } else if (reason !== this.#weUnsubscribedMessage(relay)) {
+                        subscriber.error(`${relay.url} closed the subscription`);
                     }
                 },
             });
 
             return () => {
-                subscription.close(`Unsubscribing from ${relay.url}`);
+                if (!subscription.closed) {
+                    subscription.close(this.#weUnsubscribedMessage(relay));
+                }
             };
         });
     }
@@ -151,14 +143,22 @@ export abstract class AbstractNostrToolsSource<
 
         return from(this.#relayURLs).pipe(
             mergeMap(relayURL => this.#connectToRelay(relayURL).pipe(
+                tap({
+                    error: (e: string) => { this.publishError(`Disconnected from ${relayURL} because: ${e}`); },
+                    next: (relay: Relay) => { if (relay.connected) this.publishNotification(`Connected to ${relayURL}`); },
+                    subscribe: () => { this.publishNotification(`Connecting to ${relayURL}`); },
+                    unsubscribe: () => { this.publishNotification(`Disconnected from ${relayURL}`); },
+                }),
                 retry({ delay: this.#retryDelay }),
                 mergeMap(relay => this.#subscribeToRelay(relay, filters).pipe(
+                    tap({
+                        error: (e: string) => { this.publishError(`Unsubscribed from ${relay.url} because: ${e}`); },
+                        complete: () => { this.publishNotification(`Unsubscribed from ${relay.url}`); },
+                        subscribe: () => { this.publishNotification(`Subscribing to ${relay.url}`); },
+                        unsubscribe: () => { this.publishNotification(`Unsubscribed from ${relay.url}`); },
+                    }),
                     retry({ delay: this.#retryDelay }),
-                    takeUntil(this.#stopSignal$),
                 )),
-                finalize(() => { this.publishError(`Disconnected from ${relayURL}`); }),
-                repeat({ delay: this.#retryDelay }),
-                takeUntil(this.#stopSignal$),
             )),
             map((evt: IEvent) => this.transform(evt)),
             share(),
