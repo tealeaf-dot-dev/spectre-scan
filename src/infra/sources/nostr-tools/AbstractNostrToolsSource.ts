@@ -155,9 +155,6 @@ export abstract class AbstractNostrToolsSource<
                 mergeMap(relay => this.#subscribeToRelay(relay, filters).pipe(
                     retry({ delay: this.#retryDelay }),
                     takeUntil(this.#stopSignal$),
-                    finalize(() => { 
-                        this.publishNotification(`Unsubscribing from ${relay.url}`);
-                    }),
                 )),
                 finalize(() => { this.publishError(`Disconnected from ${relayURL}`); }),
                 repeat({ delay: this.#retryDelay }),
