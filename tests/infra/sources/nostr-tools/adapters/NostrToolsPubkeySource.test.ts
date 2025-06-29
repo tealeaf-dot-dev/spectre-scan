@@ -410,7 +410,7 @@ describe('NostrToolsPubkeySource', () => {
                 });
 
                 describe("and all subscribers unsubscribe", () => {
-                    it('closes the Nostr subscription', async() => {
+                    it('it closes the Nostr subscription', async() => {
                         const PORT = 8293;
                         const RELAY_URL = `ws://localhost:${String(PORT)}`;
                         const eventBus = mock<IEventBusPort>();
@@ -452,7 +452,7 @@ describe('NostrToolsPubkeySource', () => {
                         server.close();
                     });
 
-                    it('closes the relay connection', async() => {
+                    it('it closes the relay connection', async() => {
                         const PORT = 8293;
                         const RELAY_URL = `ws://localhost:${String(PORT)}`;
                         const eventBus = mock<IEventBusPort>();
