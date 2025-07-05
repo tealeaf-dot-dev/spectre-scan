@@ -9,6 +9,7 @@ import { PubkeyStorageErrorEvent } from "./eventing/events/PubkeyStorageErrorEve
 import { PubkeyStoredEvent } from "./eventing/events/PubkeyStoredEvent.js";
 import { Pubkey } from "../../data/types.js";
 import { AbstractStreamProcessor } from "../../stream-processor/AbstractStreamProcessor.js";
+import { type Dayjs } from "dayjs";
 
 export class PubkeyRecorder extends AbstractStreamProcessor<IPubkeyStoragePortResponse> implements IRecorder<IPubkeyStoragePort> {
     readonly #storages: IPubkeyStoragePort[];
@@ -37,14 +38,14 @@ export class PubkeyRecorder extends AbstractStreamProcessor<IPubkeyStoragePortRe
         );
     }
 
-    #storePubkey(pubkey: Pubkey, date: Date): IPubkeyStoragePortResponse {
+    #storePubkey(pubkey: Pubkey, date: Dayjs): IPubkeyStoragePortResponse {
 
         return from(this.#storages).pipe(
             mergeMap(storage => this.#storePubkeyInStorage(pubkey, date, storage)),
         );
     }
 
-    #storePubkeyInStorage(pubkey: Pubkey, date: Date, storage: IPubkeyStoragePort): IPubkeyStoragePortResponse {
+    #storePubkeyInStorage(pubkey: Pubkey, date: Dayjs, storage: IPubkeyStoragePort): IPubkeyStoragePortResponse {
 
         return storage.store({ pubkey, date });
     }

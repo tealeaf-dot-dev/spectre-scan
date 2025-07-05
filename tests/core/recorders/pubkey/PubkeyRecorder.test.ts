@@ -8,6 +8,7 @@ import { Pubkey } from '../../../../src/core/data/types.js';
 import { AbstractDomainEvent } from '../../../../src/core/eventing/events/AbstractDomainEvent.js';
 import { RECORDER_STATUS } from '../../../../src/core/recorders/generic/recorder-status.js';
 import { IPubkeyStoragePort } from '../../../../src/core/recorders/pubkey/ports/storage/IPubkeyStoragePort.js';
+import dayjs from 'dayjs';
 import { PubkeyStoredEvent } from '../../../../src/core/recorders/pubkey/eventing/events/PubkeyStoredEvent.js';
 import { IPubkeyStoragePortResponse } from '../../../../src/core/recorders/pubkey/ports/storage/IPubkeyStoragePortResponse.js';
 import { PubkeyFoundEvent } from '../../../../src/core/recorders/pubkey/eventing/events/PubkeyFoundEvent.js';
@@ -90,7 +91,7 @@ describe('PubkeyRecorder', () => {
 
         it('receives pubkeys from the event stream and stores them', async () => {
             const { recorder, storage, eventSubject } = createRecorder();
-            const date = new Date();
+            const date = dayjs();
             const pubkey1 = 'abc123';
             const pubkey2 = 'def456';
             const pubkey3 = 'ghi789';
@@ -119,7 +120,7 @@ describe('PubkeyRecorder', () => {
 
         it('stores pubkeys in multiple storages', async () => {
             const { recorder, storage1, storage2, eventSubject } = createRecorderWithMultipleStorages();
-            const date = new Date();
+            const date = dayjs();
             const pubkey1 = 'abc123';
             const pubkey2 = 'def456';
             const pubkey3 = 'ghi789';
@@ -159,7 +160,7 @@ describe('PubkeyRecorder', () => {
 
         it('ignores non-pubkey events', async () => {
             const { recorder, storage, eventSubject } = createRecorder();
-            const date = new Date();
+            const date = dayjs();
             const pubkey1 = 'abc123';
             const pubkey2 = 'def456';
             const pubkey3 = 'ghi789';
@@ -209,7 +210,7 @@ describe('PubkeyRecorder', () => {
 
         it('publishes storage successes', async () => {
             const { recorder, storage, eventSubject, eventBus } = createRecorder();
-            const date = new Date();
+            const date = dayjs();
             const pubkey1 = 'abc123';
 
             storage.store.mockReturnValue(createStorageSuccessResponse(pubkey1, date, storageName));
@@ -229,7 +230,7 @@ describe('PubkeyRecorder', () => {
 
         it('publishes successes from multiple storages', async () => {
             const { recorder, storage1, storage2, eventSubject, eventBus } = createRecorderWithMultipleStorages();
-            const date = new Date();
+            const date = dayjs();
             const pubkey1 = 'abc123';
 
             recorder.start();
@@ -252,7 +253,7 @@ describe('PubkeyRecorder', () => {
 
         it('publishes storage errors', async () => {
             const { recorder, storage, eventSubject, eventBus } = createRecorder();
-            const date = new Date();
+            const date = dayjs();
             const pubkey = 'abc123';
             const errorMsg = 'storage failure';
 
@@ -272,7 +273,7 @@ describe('PubkeyRecorder', () => {
 
         it('publishes errors from multiple storages', async () => {
             const { recorder, storage1, storage2, eventSubject, eventBus } = createRecorderWithMultipleStorages();
-            const date = new Date();
+            const date = dayjs();
             const pubkey = 'abc123';
             const errorMsg = 'storage failure';
 
@@ -295,7 +296,7 @@ describe('PubkeyRecorder', () => {
 
         it('continues recording after receiving a storage error', async () => {
             const { recorder, storage, eventSubject, eventBus } = createRecorder();
-            const date     = new Date();
+            const date     = dayjs();
             const pubkey1  = 'error-key';
             const pubkey2  = 'next-key';
             const errorMsg = 'db failure';
@@ -331,7 +332,7 @@ describe('PubkeyRecorder', () => {
         describe('when the stream has already been started', () => {
             it('does nothing', async () => {
                 const { recorder, storage, eventSubject } = createRecorder();
-                const date = new Date();
+                const date = dayjs();
                 const pubkey1 = 'abc123';
                 const pubkey2 = 'def456';
                 const pubkey3 = 'ghi789';
@@ -363,7 +364,7 @@ describe('PubkeyRecorder', () => {
         describe('when the stream has been stopped', () => {
             it('restarts the stream', async () => {
                 const { recorder, storage, eventSubject } = createRecorder();
-                const date = new Date();
+                const date = dayjs();
                 const pubkey1 = 'abc123';
                 const pubkey2 = 'def456';
                 const pubkey3 = 'ghi789';
@@ -416,7 +417,7 @@ describe('PubkeyRecorder', () => {
 
         it('stops storing pubkeys', async () => {
             const { recorder, storage, eventSubject } = createRecorder();
-            const date = new Date();
+            const date = dayjs();
             const pubkeyBeforeStop = 'before-stop';
             const pubkeyAfterStop  = 'after-stop';
 
@@ -445,7 +446,7 @@ describe('PubkeyRecorder', () => {
         describe('when the stream is already stopped', () => {
             it('does nothing', async () => {
                 const { recorder, storage, eventSubject } = createRecorder();
-                const date = new Date();
+                const date = dayjs();
                 const pubkeyBeforeStop = 'before-stop';
                 const pubkeyAfterStop  = 'after-stop';
 

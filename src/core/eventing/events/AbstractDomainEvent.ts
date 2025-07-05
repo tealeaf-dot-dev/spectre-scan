@@ -1,17 +1,18 @@
 import { IDomainEventData } from "../data/IDomainEventData.js";
 import { IDomainEvent } from "./IDomainEvent.js";
+import dayjs, { type Dayjs } from "dayjs";
 
 export abstract class AbstractDomainEvent<T extends IDomainEventData> implements IDomainEvent<T> {
     #createdBy: string;
-    #createdOn: Date;
+    #createdOn: Dayjs;
     #publishedBy: string|undefined;
-    #publishedOn: Date|undefined;
+    #publishedOn: Dayjs|undefined;
     #data: T;
 
     constructor(createdBy: string, data: T) {
         this.#data = Object.freeze(data);
         this.#createdBy = createdBy;
-        this.#createdOn = new Date();
+        this.#createdOn = dayjs();
     }
 
     get createdBy(): string {
@@ -19,7 +20,7 @@ export abstract class AbstractDomainEvent<T extends IDomainEventData> implements
         return this.#createdBy;
     }
 
-    get createdOn(): Date {
+    get createdOn(): Dayjs {
 
         return this.#createdOn;
     }
@@ -29,7 +30,7 @@ export abstract class AbstractDomainEvent<T extends IDomainEventData> implements
         return this.#publishedBy;
     }
 
-    get publishedOn(): Date|undefined {
+    get publishedOn(): Dayjs|undefined {
 
         return this.#publishedOn;
     }
@@ -42,11 +43,11 @@ export abstract class AbstractDomainEvent<T extends IDomainEventData> implements
     setPublishedBy(publishedBy: string): void {
         if (this.#publishedBy === undefined) {
             this.#publishedBy = publishedBy;
-            this.#publishedOn = new Date();
+            this.#publishedOn = dayjs();
         }
     }
 
     published(): void {
-        if(this.#publishedOn === undefined) this.#publishedOn = new Date();
+        if(this.#publishedOn === undefined) this.#publishedOn = dayjs();
     }
 }

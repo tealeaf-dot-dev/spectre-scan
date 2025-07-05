@@ -1,6 +1,7 @@
 import { Pubkey } from "../../../../data/types.js";
 import { AbstractDomainActionEvent } from "../../../../eventing/events/AbstractDomainActionEvent.js";
 import { IPubkeyEventData } from "../data/IPubkeyEventData.js";
+import { type Dayjs } from "dayjs";
 
 export class PubkeyFoundEvent extends AbstractDomainActionEvent<IPubkeyEventData> {
 
@@ -9,7 +10,7 @@ export class PubkeyFoundEvent extends AbstractDomainActionEvent<IPubkeyEventData
         return this.data.pubkey;
     }
 
-    get date(): Date {
+    get date(): Dayjs {
 
         return this.data.date;
     }

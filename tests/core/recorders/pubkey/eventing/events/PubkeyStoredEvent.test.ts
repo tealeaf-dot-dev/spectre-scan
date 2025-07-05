@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import dayjs from 'dayjs';
 import { PubkeyStoredEvent } from '../../../../../../src/core/recorders/pubkey/eventing/events/PubkeyStoredEvent.js';
 import { IPubkeyStoredEventData } from '../../../../../../src/core/recorders/pubkey/eventing/data/IPubkeyStoredEventData.js';
 import { Pubkey } from '../../../../../../src/core/data/types.js';
@@ -8,7 +9,7 @@ describe('PubkeyStoredEvent', () => {
 
     const sampleData: IPubkeyStoredEventData = {
         pubkey: 'abc123def456',
-        date: new Date('2024-01-01T12:00:00.000Z'),
+        date: dayjs('2024-01-01T12:00:00.000Z'),
         storageName: 'TestStorage'
     };
 
@@ -22,12 +23,12 @@ describe('PubkeyStoredEvent', () => {
         });
 
         it('sets createdOn to current time', () => {
-            const before = Date.now();
+            const before = dayjs().valueOf();
             const event = new PubkeyStoredEvent(sampleCreatedBy, sampleData);
-            const after = Date.now();
+            const after = dayjs().valueOf();
 
-            expect(event.createdOn.getTime()).toBeGreaterThanOrEqual(before);
-            expect(event.createdOn.getTime()).toBeLessThanOrEqual(after);
+            expect(event.createdOn.valueOf()).toBeGreaterThanOrEqual(before);
+            expect(event.createdOn.valueOf()).toBeLessThanOrEqual(after);
         });
 
         it('leaves publishedBy and publishedOn as undefined', () => {
@@ -66,7 +67,7 @@ describe('PubkeyStoredEvent', () => {
         });
 
         it('accepts future dates', () => {
-            const futureDate = new Date('2099-12-31T23:59:59.999Z');
+            const futureDate = dayjs('2099-12-31T23:59:59.999Z');
 
             const data: IPubkeyStoredEventData = {
                 pubkey: sampleData.pubkey,
@@ -112,17 +113,17 @@ describe('PubkeyStoredEvent', () => {
             expect.assertions(3);
 
             const event = new PubkeyStoredEvent(sampleCreatedBy, sampleData);
-            const before = Date.now();
+            const before = dayjs().valueOf();
 
             event.published();
 
-            const after = Date.now();
+            const after = dayjs().valueOf();
 
-            expect(event.publishedOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.publishedOn)).toBe(true);
 
             if (event.publishedOn) {
-                expect(event.publishedOn.getTime()).toBeGreaterThanOrEqual(before);
-                expect(event.publishedOn.getTime()).toBeLessThanOrEqual(after);
+                expect(event.publishedOn.valueOf()).toBeGreaterThanOrEqual(before);
+                expect(event.publishedOn.valueOf()).toBeLessThanOrEqual(after);
             }
         });
 
@@ -170,16 +171,18 @@ describe('PubkeyStoredEvent', () => {
 
             expect(() => {
                 // @ts-expect-error "this should be a type error"
-                event.date = new Date();
+                event.date = dayjs();
             }).toThrow(TypeError);
         });
 
-        it('its properties are mutable', () => {
+        it('its properties are immutable', () => {
             const event = new PubkeyStoredEvent(sampleCreatedBy, sampleData);
 
-            event.date.setFullYear(0);
+            const originalYear = event.date.year();
+            const modifiedDate = event.date.year(0);
 
-            expect(event.date.getFullYear()).toBe(0);
+            expect(event.date.year()).toBe(originalYear);
+            expect(modifiedDate.year()).toBe(0);
         });
     });
 
@@ -195,7 +198,7 @@ describe('PubkeyStoredEvent', () => {
 
             expect(() => {
                 // @ts-expect-error "this should be a type error"
-                event.storageName = new Date();
+                event.storageName = dayjs();
             }).toThrow(TypeError);
         });
     });
@@ -224,7 +227,7 @@ describe('PubkeyStoredEvent', () => {
             }).toThrow(TypeError);
 
             expect(() => {
-                event.data.date = new Date();
+                event.data.date = dayjs();
             }).toThrow(TypeError);
 
             expect(() => {
@@ -255,7 +258,7 @@ describe('PubkeyStoredEvent', () => {
         it('is public', () => {
             const event = new PubkeyStoredEvent(sampleCreatedBy, sampleData);
 
-            expect(event.createdOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.createdOn)).toBe(true);
         });
 
         it('its reference is immutable', () => {
@@ -263,16 +266,18 @@ describe('PubkeyStoredEvent', () => {
 
             expect(() => {
                 // @ts-expect-error "this should be a type error"
-                event.createdOn = new Date();
+                event.createdOn = dayjs();
             }).toThrow(TypeError);
         });
 
-        it('its properties are mutable', () => {
+        it('its properties are immutable', () => {
             const event = new PubkeyStoredEvent(sampleCreatedBy, sampleData);
 
-            event.createdOn.setFullYear(0);
+            const originalYear = event.createdOn.year();
+            const modifiedDate = event.createdOn.year(0);
 
-            expect(event.date.getFullYear()).toBe(0);
+            expect(event.createdOn.year()).toBe(originalYear);
+            expect(modifiedDate.year()).toBe(0);
         });
     });
 
@@ -301,7 +306,7 @@ describe('PubkeyStoredEvent', () => {
 
             event.published();
 
-            expect(event.publishedOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.publishedOn)).toBe(true);
         });
 
         it('its reference is immutable', () => {
@@ -311,21 +316,23 @@ describe('PubkeyStoredEvent', () => {
 
             expect(() => {
                 // @ts-expect-error "this should be a type error"
-                event.publishedOn = new Date();
+                event.publishedOn = dayjs();
             }).toThrow(TypeError);
         });
 
-        it('its properties are mutable', () => {
-            expect.assertions(1);
+        it('its properties are immutable', () => {
+            expect.assertions(2);
 
             const event = new PubkeyStoredEvent(sampleCreatedBy, sampleData);
 
             event.published();
 
             if (event.publishedOn) {
-                event.publishedOn.setFullYear(0);
+                const originalYear = event.publishedOn.year();
+                const modifiedDate = event.publishedOn.year(0);
 
-                expect(event.publishedOn.getFullYear()).toBe(0);
+                expect(event.publishedOn.year()).toBe(originalYear);
+                expect(modifiedDate.year()).toBe(0);
             }
         });
     });

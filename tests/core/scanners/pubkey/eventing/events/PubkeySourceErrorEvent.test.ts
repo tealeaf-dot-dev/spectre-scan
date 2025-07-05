@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PubkeySourceErrorEvent } from '../../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js';
 import { IDomainErrorEventData } from '../../../../../../src/core/eventing/data/IDomainErrorEventData.js';
+import dayjs from 'dayjs';
 
 describe('PubkeySourceErrorEvent', () => {
     const sampleCreatedBy = 'TestCreator';
@@ -20,12 +21,12 @@ describe('PubkeySourceErrorEvent', () => {
         });
 
         it('sets createdOn to current time', () => {
-            const before = Date.now();
+            const before = dayjs().valueOf();
             const event = new PubkeySourceErrorEvent(sampleCreatedBy, sampleData);
-            const after = Date.now();
+            const after = dayjs().valueOf();
 
-            expect(event.createdOn.getTime()).toBeGreaterThanOrEqual(before);
-            expect(event.createdOn.getTime()).toBeLessThanOrEqual(after);
+            expect(event.createdOn.valueOf()).toBeGreaterThanOrEqual(before);
+            expect(event.createdOn.valueOf()).toBeLessThanOrEqual(after);
         });
 
         it('leaves publishedBy and publishedOn as undefined', () => {
@@ -90,17 +91,17 @@ describe('PubkeySourceErrorEvent', () => {
             expect.assertions(3);
 
             const event = new PubkeySourceErrorEvent(sampleCreatedBy, sampleData);
-            const before = Date.now();
+            const before = dayjs().valueOf();
 
             event.published();
 
-            const after = Date.now();
+            const after = dayjs().valueOf();
 
-            expect(event.publishedOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.publishedOn)).toBe(true);
 
             if (event.publishedOn) {
-                expect(event.publishedOn.getTime()).toBeGreaterThanOrEqual(before);
-                expect(event.publishedOn.getTime()).toBeLessThanOrEqual(after);
+                expect(event.publishedOn.valueOf()).toBeGreaterThanOrEqual(before);
+                expect(event.publishedOn.valueOf()).toBeLessThanOrEqual(after);
             }
         });
 
@@ -220,7 +221,7 @@ describe('PubkeySourceErrorEvent', () => {
         it('is public', () => {
             const event = new PubkeySourceErrorEvent(sampleCreatedBy, sampleData);
 
-            expect(event.createdOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.createdOn)).toBe(true);
         });
 
         it('its reference is immutable', () => {
@@ -228,16 +229,21 @@ describe('PubkeySourceErrorEvent', () => {
 
             expect(() => {
                 // @ts-expect-error "this should be a type error"
-                event.createdOn = new Date();
+                event.createdOn = dayjs();
             }).toThrow(TypeError);
         });
 
-        it('its properties are mutable', () => {
+        it('its properties are immutable', () => {
             const event = new PubkeySourceErrorEvent(sampleCreatedBy, sampleData);
+            const originalYear = event.createdOn.year();
 
-            event.createdOn.setFullYear(0);
-
-            expect(event.createdOn.getFullYear()).toBe(0);
+            // dayjs objects are immutable - methods return new instances
+            const modifiedDate = event.createdOn.year(0);
+            
+            // Original date should be unchanged
+            expect(event.createdOn.year()).toBe(originalYear);
+            // Modified date should be different
+            expect(modifiedDate.year()).toBe(0);
         });
     });
 
@@ -266,7 +272,7 @@ describe('PubkeySourceErrorEvent', () => {
 
             event.published();
 
-            expect(event.publishedOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.publishedOn)).toBe(true);
         });
 
         it('its reference is immutable', () => {
@@ -276,21 +282,26 @@ describe('PubkeySourceErrorEvent', () => {
 
             expect(() => {
                 // @ts-expect-error "this should be a type error"
-                event.publishedOn = new Date();
+                event.publishedOn = dayjs();
             }).toThrow(TypeError);
         });
 
-        it('its properties are mutable', () => {
-            expect.assertions(1);
+        it('its properties are immutable', () => {
+            expect.assertions(2);
 
             const event = new PubkeySourceErrorEvent(sampleCreatedBy, sampleData);
 
             event.published();
 
             if (event.publishedOn) {
-                event.publishedOn.setFullYear(0);
-
-                expect(event.publishedOn.getFullYear()).toBe(0);
+                const originalYear = event.publishedOn.year();
+                // dayjs objects are immutable - methods return new instances
+                const modifiedDate = event.publishedOn.year(0);
+                
+                // Original date should be unchanged
+                expect(event.publishedOn.year()).toBe(originalYear);
+                // Modified date should be different
+                expect(modifiedDate.year()).toBe(0);
             }
         });
     });

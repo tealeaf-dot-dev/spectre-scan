@@ -7,6 +7,7 @@ import { IPubkeyScannerSourcePortResponse } from "../../../../core/scanners/pubk
 import { PubkeySourceNotificationEvent } from "../../../../core/scanners/pubkey/eventing/events/PubkeySourceNotificationEvent.js";
 import { Either, right } from "fp-ts/lib/Either.js";
 import { IEvent } from "../../../../core/data/IEvent.js";
+import dayjs from "dayjs";
 
 export class NostrToolsPubkeySource extends AbstractNostrToolsSource<
     PubkeySourceErrorEvent,
@@ -30,7 +31,7 @@ export class NostrToolsPubkeySource extends AbstractNostrToolsSource<
     }
 
     protected transform(nostrEvent: IEvent): Either<PubkeySourceErrorEvent, PubkeyFoundEvent> {
-        const evt = new PubkeyFoundEvent(this.constructor.name, { pubkey: nostrEvent.pubkey, date: new Date() });
+        const evt = new PubkeyFoundEvent(this.constructor.name, { pubkey: nostrEvent.pubkey, date: dayjs() });
 
         return right(evt);
     }

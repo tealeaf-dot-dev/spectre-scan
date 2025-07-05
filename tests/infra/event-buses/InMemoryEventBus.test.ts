@@ -3,13 +3,14 @@ import { PubkeyFoundEvent } from '../../../src/core/recorders/pubkey/eventing/ev
 import { IPubkeyEventData } from '../../../src/core/recorders/pubkey/eventing/data/IPubkeyEventData.js';
 import { Pubkey } from '../../../src/core/data/types.js';
 import { IEventBusPort } from '../../../src/core/eventing/ports/event-bus/IEventBusPort.js';
+import dayjs from 'dayjs';
 
 let InMemoryEventBus: typeof import('../../../src/infra/event-buses/InMemoryEventBus.js').InMemoryEventBus;
 
 function createTestEvent(pubkey: Pubkey = 'test-pubkey'): PubkeyFoundEvent {
     const eventData: IPubkeyEventData = {
         pubkey,
-        date: new Date('2024-01-01T12:00:00.000Z')
+        date: dayjs('2024-01-01T12:00:00.000Z')
     };
 
     return new PubkeyFoundEvent('TestCreator', eventData);

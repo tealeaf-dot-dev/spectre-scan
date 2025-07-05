@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import dayjs from 'dayjs';
 import { PubkeySourceNotificationEvent } from '../../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceNotificationEvent.js';
 import { IDomainNotificationEventData } from '../../../../../../src/core/eventing/data/IDomainNotificationEventData.js';
 
@@ -19,12 +20,12 @@ describe('PubkeySourceNotificationEvent', () => {
         });
 
         it('sets createdOn to current time', () => {
-            const before = Date.now();
+            const before = dayjs().valueOf();
             const event = new PubkeySourceNotificationEvent(sampleCreatedBy, sampleData);
-            const after = Date.now();
+            const after = dayjs().valueOf();
 
-            expect(event.createdOn.getTime()).toBeGreaterThanOrEqual(before);
-            expect(event.createdOn.getTime()).toBeLessThanOrEqual(after);
+            expect(event.createdOn.valueOf()).toBeGreaterThanOrEqual(before);
+            expect(event.createdOn.valueOf()).toBeLessThanOrEqual(after);
         });
 
         it('leaves publishedBy and publishedOn as undefined', () => {
@@ -89,17 +90,17 @@ describe('PubkeySourceNotificationEvent', () => {
             expect.assertions(3);
 
             const event = new PubkeySourceNotificationEvent(sampleCreatedBy, sampleData);
-            const before = Date.now();
+            const before = dayjs().valueOf();
 
             event.published();
 
-            const after = Date.now();
+            const after = dayjs().valueOf();
 
-            expect(event.publishedOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.publishedOn)).toBe(true);
 
             if (event.publishedOn) {
-                expect(event.publishedOn.getTime()).toBeGreaterThanOrEqual(before);
-                expect(event.publishedOn.getTime()).toBeLessThanOrEqual(after);
+                expect(event.publishedOn.valueOf()).toBeGreaterThanOrEqual(before);
+                expect(event.publishedOn.valueOf()).toBeLessThanOrEqual(after);
             }
         });
 
@@ -220,7 +221,7 @@ describe('PubkeySourceNotificationEvent', () => {
         it('is public', () => {
             const event = new PubkeySourceNotificationEvent(sampleCreatedBy, sampleData);
 
-            expect(event.createdOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.createdOn)).toBe(true);
         });
 
         it('its reference is immutable', () => {
@@ -228,16 +229,18 @@ describe('PubkeySourceNotificationEvent', () => {
 
             expect(() => {
                 // @ts-expect-error "there should be a type error"
-                event.createdOn = new Date();
+                event.createdOn = dayjs();
             }).toThrow(TypeError);
         });
 
-        it('its properties are mutable', () => {
+        it('its properties are immutable', () => {
             const event = new PubkeySourceNotificationEvent(sampleCreatedBy, sampleData);
 
-            event.createdOn.setFullYear(0);
+            const originalYear = event.createdOn.year();
+            const modifiedDate = event.createdOn.year(0);
 
-            expect(event.createdOn.getFullYear()).toBe(0);
+            expect(event.createdOn.year()).toBe(originalYear);
+            expect(modifiedDate.year()).toBe(0);
         });
     });
 
@@ -266,7 +269,7 @@ describe('PubkeySourceNotificationEvent', () => {
 
             event.published();
 
-            expect(event.publishedOn).toBeInstanceOf(Date);
+            expect(dayjs.isDayjs(event.publishedOn)).toBe(true);
         });
 
         it('its reference is immutable', () => {
@@ -276,21 +279,23 @@ describe('PubkeySourceNotificationEvent', () => {
 
             expect(() => {
                 // @ts-expect-error "there should be a type error"
-                event.publishedOn = new Date();
+                event.publishedOn = dayjs();
             }).toThrow(TypeError);
         });
 
-        it('its properties are mutable', () => {
-            expect.assertions(1);
+        it('its properties are immutable', () => {
+            expect.assertions(2);
 
             const event = new PubkeySourceNotificationEvent(sampleCreatedBy, sampleData);
 
             event.published();
 
             if (event.publishedOn) {
-                event.publishedOn.setFullYear(0);
+                const originalYear = event.publishedOn.year();
+                const modifiedDate = event.publishedOn.year(0);
 
-                expect(event.publishedOn.getFullYear()).toBe(0);
+                expect(event.publishedOn.year()).toBe(originalYear);
+                expect(modifiedDate.year()).toBe(0);
             }
         });
     });

@@ -18,7 +18,7 @@ export class SQLitePubkeyStorage extends AbstractSQLiteStorage<
 > implements IRecorderStoragePort<IPubkeyStoragePortRequest, IPubkeyStoragePortResponse> {
 
     store({ pubkey, date }: IPubkeyStoragePortRequest): IPubkeyStoragePortResponse {
-        const dateStr = date.toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
+        const dateStr = date.format('YYYY-MM-DD'); // Format dayjs date in YYYY-MM-DD format
         const sqlParams = [pubkey, dateStr] as IPubkeyStoragePortSQLParams;
 
         return this.maybeStore(sql.storePubkey, sqlParams).pipe(

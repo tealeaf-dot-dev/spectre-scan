@@ -10,6 +10,7 @@ import { sql } from '../../../../../src/infra/storage/sqlite/sql.js';
 import { PubkeyStorageErrorEvent } from '../../../../../src/core/recorders/pubkey/eventing/events/PubkeyStorageErrorEvent.js';
 import { map, mapLeft } from "fp-ts/lib/Either.js";
 import { PubkeyStoredEvent } from '../../../../../src/core/recorders/pubkey/eventing/events/PubkeyStoredEvent.js';
+import dayjs from 'dayjs';
 
 type DBFactory = (
     filename: string,
@@ -23,7 +24,7 @@ vi.mock('sqlite3', () => import('./mocks/sqlite3-mock.js'));
 
 const DB_PATH = '/path/to/database.sql';
 const PUBKEY = 'pubkey1';
-const TODAY = new Date().toISOString().split('T')[0];
+const TODAY = dayjs().format('YYYY-MM-DD');
 
 const dbCtor = () => sqlite3.Database as unknown as MockInstance<DBFactory>;
 // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -204,7 +205,7 @@ describe('SQLitePubkeyStorage', () => {
         });
 
         it('stores a pubkey', () => {
-            storage.store({ pubkey: PUBKEY, date: new Date() });
+            storage.store({ pubkey: PUBKEY, date: dayjs() });
 
             expect(getRunMock()).toHaveBeenCalledWith(sql.storePubkey, [PUBKEY, TODAY], expect.any(Function));
         });
@@ -214,7 +215,7 @@ describe('SQLitePubkeyStorage', () => {
 
             mockDb();
 
-            const response = storage.store({ pubkey: PUBKEY, date: new Date() });
+            const response = storage.store({ pubkey: PUBKEY, date: dayjs() });
 
             await firstValueFrom(
                 response.pipe(
@@ -232,7 +233,7 @@ describe('SQLitePubkeyStorage', () => {
                 mockDb();
 
                 const uninitializedStorage = createStorage().storage;
-                const response = uninitializedStorage.store({ pubkey: PUBKEY, date: new Date() });
+                const response = uninitializedStorage.store({ pubkey: PUBKEY, date: dayjs() });
 
                 await firstValueFrom(
                     response.pipe(
@@ -255,7 +256,7 @@ describe('SQLitePubkeyStorage', () => {
                 const { storage: failingStorage } = createStorage();
                 await failingStorage.init();
 
-                const response = failingStorage.store({ pubkey: PUBKEY, date: new Date() });
+                const response = failingStorage.store({ pubkey: PUBKEY, date: dayjs() });
 
                 await firstValueFrom(
                     response.pipe(

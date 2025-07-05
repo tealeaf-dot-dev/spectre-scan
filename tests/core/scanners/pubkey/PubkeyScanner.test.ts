@@ -8,8 +8,9 @@ import { PubkeySourceErrorEvent } from '../../../../src/core/scanners/pubkey/eve
 import { IPubkeyScannerSourcePort } from '../../../../src/core/scanners/pubkey/ports/source/IPubkeyScannerSourcePort.js';
 import { pubkeyScannerConfig } from '../../../../src/config.js';
 import { Either, left, map, right } from 'fp-ts/lib/Either.js';
+import dayjs from 'dayjs';
 
-const DATE = new Date();
+const DATE = dayjs();
 const ERROR_EVENT_INDEX = 1;
 const pubkeyFilters = pubkeyScannerConfig.filters;
 
