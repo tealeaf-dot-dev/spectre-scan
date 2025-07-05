@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PubkeySourceErrorEvent } from '../../../../../../src/core/scanners/pubkey/eventing/events/PubkeySourceErrorEvent.js';
 import { IDomainErrorEventData } from '../../../../../../src/core/eventing/data/IDomainErrorEventData.js';
-import { AbstractDomainErrorEvent } from '../../../../../../src/core/eventing/events/AbstractDomainErrorEvent.js';
-import { AbstractDomainEvent } from '../../../../../../src/core/eventing/events/AbstractDomainEvent.js';
 
 describe('PubkeySourceErrorEvent', () => {
     const sampleCreatedBy = 'TestCreator';

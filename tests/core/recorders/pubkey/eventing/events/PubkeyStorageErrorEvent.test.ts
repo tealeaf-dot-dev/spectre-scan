@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PubkeyStorageErrorEvent } from '../../../../../../src/core/recorders/pubkey/eventing/events/PubkeyStorageErrorEvent.js';
 import { IDomainErrorEventData } from '../../../../../../src/core/eventing/data/IDomainErrorEventData.js';
-import { AbstractDomainErrorEvent } from '../../../../../../src/core/eventing/events/AbstractDomainErrorEvent.js';
-import { AbstractDomainEvent } from '../../../../../../src/core/eventing/events/AbstractDomainEvent.js';
 
 describe('PubkeyStorageErrorEvent', () => {
     const sampleCreatedBy = 'TestCreator';
